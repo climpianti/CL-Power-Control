@@ -5,7 +5,7 @@ from homeassistant.const import Platform
 
 DOMAIN = "cl_power_control"
 NAME = "CL Power Control"
-VERSION = "0.2.6"
+VERSION = "0.3.0-dev"
 MANUFACTURER = "CL Impianti"
 
 CONF_NAME = "name"
@@ -54,6 +54,7 @@ PLATFORMS = [
     Platform.SENSOR,
     Platform.SWITCH,
     Platform.SELECT,
+    Platform.NUMBER,
     Platform.BINARY_SENSOR,
     Platform.TEXT,
     Platform.BUTTON,
