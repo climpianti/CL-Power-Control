@@ -1,0 +1,12 @@
+{
+  "domain": "cl_power_control",
+  "name": "CL Power Control",
+  "version": "0.2.6",
+  "documentation": "https://github.com/climpianti/CL-Power-Control",
+  "issue_tracker": "https://github.com/climpianti/CL-Power-Control/issues",
+  "codeowners": ["@climpianti"],
+  "config_flow": true,
+  "integration_type": "service",
+  "iot_class": "local_push",
+  "requirements": []
+}

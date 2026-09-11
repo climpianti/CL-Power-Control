@@ -1,0 +1,148 @@
+{
+  "title": "CL Power Control",
+  "config": {
+    "step": {
+      "user": {
+        "title": "CL Power Control 0.2.5",
+        "description": "Crea una nuova installazione. Il PIN protegge le impostazioni installatore.",
+        "data": {
+          "name": "Nome installazione",
+          "installer_pin": "PIN installatore",
+          "installer_pin_confirm": "Conferma PIN"
+        }
+      }
+    },
+    "error": {
+      "pin_format": "Il PIN deve contenere almeno 4 cifre.",
+      "pin_mismatch": "I PIN non coincidono."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "CL Power Control",
+        "menu_options": {
+          "quick": "Impostazioni rapide",
+          "installer_unlock": "Impostazioni installatore",
+          "loads": "Gestione carichi (PIN installatore)",
+          "installer_pin_reset": "Reimposta PIN installatore (recupero)"
+        }
+      },
+      "quick": {
+        "title": "Impostazioni rapide",
+        "data": {
+          "power_sensor": "Sensore potenza generale",
+          "limit_w": "Soglia immediata",
+          "warning_w": "Soglia ritardata",
+          "restore_w": "Soglia riattivazione"
+        }
+      },
+      "loads": {
+        "title": "Gestione carichi",
+        "menu_options": {
+          "load_add": "Aggiungi carico",
+          "load_select": "Modifica carico",
+          "load_delete": "Elimina carico",
+          "init": "Indietro"
+        }
+      },
+      "load_add": {
+        "title": "Aggiungi carico",
+        "data": {
+          "name": "Nome",
+          "switch": "Entità comando",
+          "power_sensor": "Sensore potenza",
+          "priority": "Priorità",
+          "enabled": "Abilitato",
+          "auto_restart": "Riattivazione automatica",
+          "never_shed": "Mai distaccabile",
+          "min_active_w": "Soglia minima carico attivo",
+          "estimated_w": "Potenza stimata"
+        }
+      },
+      "load_select": {
+        "title": "Seleziona carico",
+        "data": {
+          "load_id": "Carico"
+        }
+      },
+      "load_edit": {
+        "title": "Modifica carico",
+        "data": {
+          "name": "Nome",
+          "switch": "Entità comando",
+          "power_sensor": "Sensore potenza",
+          "priority": "Priorità",
+          "enabled": "Abilitato",
+          "auto_restart": "Riattivazione automatica",
+          "never_shed": "Mai distaccabile",
+          "min_active_w": "Soglia minima carico attivo",
+          "estimated_w": "Potenza stimata"
+        }
+      },
+      "load_delete": {
+        "title": "Elimina carico",
+        "description": "Seleziona il carico da eliminare.",
+        "data": {
+          "load_id": "Carico"
+        }
+      },
+      "installer_unlock": {
+        "title": "Accesso installatore",
+        "description": "Inserisci il PIN installatore.",
+        "data": {
+          "pin": "PIN"
+        }
+      },
+      "installer": {
+        "title": "Configurazione installatore",
+        "menu_options": {
+          "loads": "Gestione carichi",
+          "installer_power": "Soglie e sensore generale",
+          "installer_timing": "Tempi di intervento",
+          "installer_pin_change": "Cambia PIN installatore",
+          "init": "Esci"
+        }
+      },
+      "installer_power": {
+        "title": "Soglie e sensore generale",
+        "data": {
+          "power_sensor": "Sensore potenza generale",
+          "limit_w": "Soglia immediata",
+          "warning_w": "Soglia ritardata",
+          "restore_w": "Soglia riattivazione"
+        }
+      },
+      "installer_timing": {
+        "title": "Tempi di intervento",
+        "data": {
+          "delay_immediate_sec": "Ritardo soglia immediata",
+          "delay_warning_sec": "Ritardo soglia ritardata",
+          "wait_between_sheds_sec": "Attesa tra distacchi",
+          "wait_before_restore_sec": "Attesa prima riattivazione",
+          "wait_between_restores_sec": "Attesa tra riattivazioni"
+        }
+      },
+      "installer_pin_change": {
+        "title": "Cambia PIN installatore",
+        "data": {
+          "new_pin": "Nuovo PIN",
+          "confirm_pin": "Conferma PIN"
+        }
+      },
+      "installer_pin_reset": {
+        "title": "Reimposta PIN installatore",
+        "description": "Recupero amministratore Home Assistant. Usa questa funzione se il PIN precedente non viene accettato o è stato dimenticato.",
+        "data": {
+          "new_pin": "Nuovo PIN",
+          "confirm_pin": "Conferma PIN"
+        }
+      }
+    },
+    "error": {
+      "invalid_pin": "PIN installatore non corretto.",
+      "pin_format": "Il PIN deve contenere almeno 4 cifre.",
+      "pin_mismatch": "I PIN non coincidono."
+    }
+  }
+}

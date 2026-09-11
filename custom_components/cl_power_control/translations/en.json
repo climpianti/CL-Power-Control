@@ -1,0 +1,148 @@
+{
+  "title": "CL Power Control",
+  "config": {
+    "step": {
+      "user": {
+        "title": "CL Power Control 0.2.5",
+        "description": "Create a new installation. The PIN protects installer settings.",
+        "data": {
+          "name": "Installation name",
+          "installer_pin": "Installer PIN",
+          "installer_pin_confirm": "Confirm PIN"
+        }
+      }
+    },
+    "error": {
+      "pin_format": "The PIN must contain at least 4 digits.",
+      "pin_mismatch": "The PINs do not match."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "CL Power Control",
+        "menu_options": {
+          "quick": "Quick settings",
+          "installer_unlock": "Installer settings",
+          "loads": "Load management (installer PIN)",
+          "installer_pin_reset": "Reset installer PIN (recovery)"
+        }
+      },
+      "quick": {
+        "title": "Quick settings",
+        "data": {
+          "power_sensor": "Main power sensor",
+          "limit_w": "Immediate threshold",
+          "warning_w": "Delayed threshold",
+          "restore_w": "Restore threshold"
+        }
+      },
+      "loads": {
+        "title": "Load management",
+        "menu_options": {
+          "load_add": "Add load",
+          "load_select": "Edit load",
+          "load_delete": "Delete load",
+          "init": "Back"
+        }
+      },
+      "load_add": {
+        "title": "Add load",
+        "data": {
+          "name": "Name",
+          "switch": "Command entity",
+          "power_sensor": "Power sensor",
+          "priority": "Priority",
+          "enabled": "Enabled",
+          "auto_restart": "Automatic restore",
+          "never_shed": "Never shed",
+          "min_active_w": "Minimum active power",
+          "estimated_w": "Estimated power"
+        }
+      },
+      "load_select": {
+        "title": "Select load",
+        "data": {
+          "load_id": "Load"
+        }
+      },
+      "load_edit": {
+        "title": "Edit load",
+        "data": {
+          "name": "Name",
+          "switch": "Command entity",
+          "power_sensor": "Power sensor",
+          "priority": "Priority",
+          "enabled": "Enabled",
+          "auto_restart": "Automatic restore",
+          "never_shed": "Never shed",
+          "min_active_w": "Minimum active power",
+          "estimated_w": "Estimated power"
+        }
+      },
+      "load_delete": {
+        "title": "Delete load",
+        "description": "Select the load to delete.",
+        "data": {
+          "load_id": "Load"
+        }
+      },
+      "installer_unlock": {
+        "title": "Installer access",
+        "description": "Enter the installer PIN.",
+        "data": {
+          "pin": "PIN"
+        }
+      },
+      "installer": {
+        "title": "Installer configuration",
+        "menu_options": {
+          "loads": "Load management",
+          "installer_power": "Thresholds and main sensor",
+          "installer_timing": "Timing",
+          "installer_pin_change": "Change installer PIN",
+          "init": "Exit"
+        }
+      },
+      "installer_power": {
+        "title": "Thresholds and main sensor",
+        "data": {
+          "power_sensor": "Main power sensor",
+          "limit_w": "Immediate threshold",
+          "warning_w": "Delayed threshold",
+          "restore_w": "Restore threshold"
+        }
+      },
+      "installer_timing": {
+        "title": "Timing",
+        "data": {
+          "delay_immediate_sec": "Immediate threshold delay",
+          "delay_warning_sec": "Delayed threshold delay",
+          "wait_between_sheds_sec": "Wait between sheds",
+          "wait_before_restore_sec": "Wait before restore",
+          "wait_between_restores_sec": "Wait between restores"
+        }
+      },
+      "installer_pin_change": {
+        "title": "Change installer PIN",
+        "data": {
+          "new_pin": "New PIN",
+          "confirm_pin": "Confirm PIN"
+        }
+      },
+      "installer_pin_reset": {
+        "title": "Reset installer PIN",
+        "description": "Home Assistant administrator recovery. Use this if the previous PIN is rejected or forgotten.",
+        "data": {
+          "new_pin": "New PIN",
+          "confirm_pin": "Confirm PIN"
+        }
+      }
+    },
+    "error": {
+      "invalid_pin": "Incorrect installer PIN.",
+      "pin_format": "The PIN must contain at least 4 digits.",
+      "pin_mismatch": "The PINs do not match."
+    }
+  }
+}
