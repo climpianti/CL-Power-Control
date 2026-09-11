@@ -22,7 +22,7 @@ DASHBOARD_PATH = "cl-power-control"
 
 
 async def async_install_logo(hass) -> None:
-    """Expose the packaged CL logo through /local without manual copying."""
+    """Expose packaged logos through /local without manual copying."""
     brand_dir = Path(__file__).parent / "brand"
     source = brand_dir / "logo.png"
     header_source = brand_dir / "header_logo.png"
@@ -35,10 +35,7 @@ async def async_install_logo(hass) -> None:
             raise FileNotFoundError(f"CL Power Control logo not found: {source}")
         target_dir.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source, target)
-        if header_source.exists():
-            shutil.copyfile(header_source, header_target)
-        else:
-            shutil.copyfile(source, header_target)
+        shutil.copyfile(header_source if header_source.exists() else source, header_target)
 
     await hass.async_add_executor_job(_copy)
 
@@ -64,7 +61,7 @@ def _load_card(hass, entry, load):
     power = _eid(hass, entry, "sensor", f"load_{load_id}_power")
     suspended = _eid(hass, entry, "binary_sensor", f"load_{load_id}_suspended")
 
-    rows = [{"type": "section", "label": "Stato carico"}]
+    rows = []
     if power:
         rows.append({"entity": power, "name": "Potenza"})
     if priority:
@@ -74,30 +71,56 @@ def _load_card(hass, entry, load):
     if load.get(LOAD_NEVER_SHED, False):
         rows.append({"type": "section", "label": "🔒 Protetto - mai distaccato"})
 
-    return {
-        "type": "entities",
-        "title": name,
-        "show_header_toggle": False,
-        "entities": rows,
-    }
+    return {"type": "entities", "title": name, "show_header_toggle": False, "entities": rows}
 
 
 def _installer_load_card(hass, entry, load):
     load_id = load[LOAD_ID]
     name = load.get(LOAD_NAME, "Carico")
-    command = _eid(hass, entry, "select", f"load_{load_id}_command_entity")
-    power_sensor = _eid(hass, entry, "select", f"load_{load_id}_power_sensor")
-    priority = _eid(hass, entry, "select", f"load_{load_id}_priority")
-    rows = [{"type": "section", "label": f"Configurazione {name}"}]
-    if command:
-        rows.append({"entity": command, "name": "Entità comando"})
-    if power_sensor:
-        rows.append({"entity": power_sensor, "name": "Sensore potenza"})
-    if priority:
-        rows.append({"entity": priority, "name": "Priorità"})
+    rows = []
+    candidates = [
+        ("select", f"load_{load_id}_command_entity", "Entità comando"),
+        ("select", f"load_{load_id}_power_sensor", "Sensore potenza"),
+        ("select", f"load_{load_id}_priority", "Priorità"),
+        ("switch", f"load_{load_id}_enabled", "Gestione attiva"),
+        ("switch", f"load_{load_id}_auto_restart", "Auto riattivazione"),
+        ("switch", f"load_{load_id}_never_shed", "Mai distaccabile"),
+        ("number", f"load_{load_id}_min_active_w", "Potenza minima attiva"),
+        ("number", f"load_{load_id}_estimated_w", "Potenza stimata"),
+        ("button", f"load_{load_id}_test_on", "Test ON"),
+        ("button", f"load_{load_id}_test_off", "Test OFF"),
+    ]
+    for platform, suffix, label in candidates:
+        entity_id = _eid(hass, entry, platform, suffix)
+        if entity_id:
+            rows.append({"entity": entity_id, "name": label})
     return {
         "type": "entities",
-        "title": name,
+        "title": f"⚙️ {name}",
+        "show_header_toggle": False,
+        "entities": rows,
+    }
+
+
+def _installer_global_card(hass, entry):
+    rows = []
+    candidates = [
+        ("number", "installer_limit_w", "Soglia immediata"),
+        ("number", "installer_warning_w", "Soglia ritardata"),
+        ("number", "installer_restore_w", "Soglia riattivazione"),
+        ("number", "installer_delay_immediate_sec", "Ritardo soglia immediata"),
+        ("number", "installer_delay_warning_sec", "Ritardo soglia ritardata"),
+        ("number", "installer_wait_between_sheds_sec", "Attesa tra distacchi"),
+        ("number", "installer_wait_before_restore_sec", "Attesa prima riattivazione"),
+        ("number", "installer_wait_between_restores_sec", "Attesa tra riattivazioni"),
+    ]
+    for platform, suffix, label in candidates:
+        entity_id = _eid(hass, entry, platform, suffix)
+        if entity_id:
+            rows.append({"entity": entity_id, "name": label})
+    return {
+        "type": "entities",
+        "title": "⚙️ Parametri generali",
         "show_header_toggle": False,
         "entities": rows,
     }
@@ -132,13 +155,9 @@ def _build(hass, entry):
             "type": "markdown",
             "content": (
                 '<table role="presentation" width="100%"><tr>'
-                '<td width="118" valign="middle">'
-                '<img src="/local/cl_power_control/header_logo.png" width="96">'
-                '</td>'
-                '<td valign="middle">'
-                '<b>CL Power Control</b><br>'
-                '<small>Gestione intelligente dei carichi elettrici</small>'
-                '</td>'
+                '<td width="104" valign="middle"><img src="/local/cl_power_control/header_logo.png" width="86"></td>'
+                '<td valign="middle"><span style="font-size:24px"><b>CL Power Control</b></span><br>'
+                '<span style="font-size:14px">Gestione intelligente dei carichi elettrici</span></td>'
                 '</tr></table>'
             ),
         },
@@ -150,14 +169,6 @@ def _build(hass, entry):
                 {"type": "tile", "entity": headroom, "name": "Disponibile"},
                 {"type": "tile", "entity": suspended_power, "name": "Sospesa"},
             ],
-        },
-        {
-            "type": "markdown",
-            "title": "Come funzionano le priorità",
-            "content": (
-                "**Priorità 1 = carico più importante: è l'ultimo a essere distaccato e il primo a essere riattivato.**  \n"
-                "Il numero più alto identifica il carico meno importante, quindi viene distaccato per primo."
-            ),
         },
         {
             "type": "history-graph",
@@ -172,25 +183,21 @@ def _build(hass, entry):
             ],
         },
         {"type": "entity", "entity": last_event, "name": "Ultimo intervento"},
+        {
+            "type": "markdown",
+            "title": "Priorità",
+            "content": (
+                "**Priorità 1 = carico più importante:** ultimo a essere distaccato e primo a essere riattivato.  \n"
+                "Il numero più alto identifica il carico meno importante e viene distaccato per primo."
+            ),
+        },
     ]
 
     if suspended_entities:
-        cards.append({
-            "type": "history-graph",
-            "title": "Storico distacco carichi",
-            "hours_to_show": 12,
-            "refresh_interval": 15,
-            "entities": suspended_entities,
-        })
-
+        cards.append({"type": "history-graph", "title": "Storico distacco carichi", "hours_to_show": 12, "refresh_interval": 15, "entities": suspended_entities})
     if load_cards:
-        cards.append({
-            "type": "vertical-stack",
-            "title": "Carichi e priorità",
-            "cards": load_cards,
-        })
+        cards.append({"type": "vertical-stack", "cards": [{"type": "markdown", "content": "## Carichi e priorità"}, *load_cards]})
 
-    # Installer access: show a simple locked or unlocked panel, never both.
     if installer_mode:
         locked_rows = []
         if installer_pin:
@@ -199,20 +206,11 @@ def _build(hass, entry):
             locked_rows.append({"entity": installer_status, "name": "Stato accesso"})
         if installer_unlock:
             locked_rows.append({"entity": installer_unlock, "name": "Sblocca"})
-
         if locked_rows:
             cards.append({
                 "type": "conditional",
                 "conditions": [{"entity": installer_mode, "state": "off"}],
-                "card": {
-                    "type": "entities",
-                    "title": "🔒 Accesso installatore",
-                    "show_header_toggle": False,
-                    "entities": [
-                        {"type": "section", "label": "Inserisci il PIN e premi Sblocca"},
-                        *locked_rows,
-                    ],
-                },
+                "card": {"type": "entities", "title": "🔒 Accesso installatore", "show_header_toggle": False, "entities": locked_rows},
             })
 
         unlocked_rows = []
@@ -224,15 +222,10 @@ def _build(hass, entry):
             cards.append({
                 "type": "conditional",
                 "conditions": [{"entity": installer_mode, "state": "on"}],
-                "card": {
-                    "type": "entities",
-                    "title": "🔓 Modalità installatore attiva",
-                    "show_header_toggle": False,
-                    "entities": unlocked_rows,
-                },
+                "card": {"type": "entities", "title": "🔓 Modalità installatore attiva", "show_header_toggle": False, "entities": unlocked_rows},
             })
 
-    if installer_mode and installer_load_cards:
+        installer_cards = [_installer_global_card(hass, entry), *installer_load_cards]
         cards.append({
             "type": "conditional",
             "conditions": [{"entity": installer_mode, "state": "on"}],
@@ -241,23 +234,18 @@ def _build(hass, entry):
                 "cards": [
                     {
                         "type": "markdown",
-                        "title": "Configurazione installatore",
                         "content": (
-                            "Associa le entità direttamente dalla dashboard.  \n"
-                            "Le modifiche vengono salvate nella configurazione di **CL Power Control**."
+                            "## Configurazione installatore\n"
+                            "Modifica parametri e associazioni direttamente da questa dashboard. "
+                            "I pulsanti **Test ON/OFF** comandano realmente l'entità selezionata."
                         ),
                     },
-                    *installer_load_cards,
+                    *installer_cards,
                 ],
             },
         })
 
-    return {"views": [{
-        "title": "CL Power Control",
-        "path": "panoramica",
-        "icon": "mdi:transmission-tower",
-        "cards": cards,
-    }]}
+    return {"views": [{"title": "CL Power Control", "path": "panoramica", "icon": "mdi:transmission-tower", "cards": cards}]}
 
 
 async def async_create_dashboard(hass, entry) -> None:
