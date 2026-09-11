@@ -39,7 +39,6 @@ class CLPowerControlCoordinator(DataUpdateCoordinator[dict]):
         self._pending_installer_pin: str = ""
         self._installer_message: str = "Bloccato"
 
-
     @property
     def installer_unlocked(self) -> bool:
         """Return True while the installer session is valid."""
@@ -112,11 +111,19 @@ class CLPowerControlCoordinator(DataUpdateCoordinator[dict]):
         self._installer_message = "Bloccato"
 
     async def async_update_load_field(self, load_id: str, field: str, value) -> None:
-        """Update one load field from the protected dashboard controls."""
+        """Update one load field from protected dashboard controls."""
         if not self.installer_unlocked:
             _LOGGER.warning("Installer-only load update rejected while locked")
             return
-        allowed = {LOAD_SWITCH, LOAD_POWER_SENSOR}
+        allowed = {
+            LOAD_SWITCH,
+            LOAD_POWER_SENSOR,
+            LOAD_ENABLED,
+            LOAD_AUTO_RESTART,
+            LOAD_NEVER_SHED,
+            LOAD_MIN_ACTIVE_W,
+            LOAD_ESTIMATED_W,
+        }
         if field not in allowed:
             raise ValueError(f"Unsupported dashboard load field: {field}")
         loads = []
@@ -126,6 +133,47 @@ class CLPowerControlCoordinator(DataUpdateCoordinator[dict]):
             self.entry, data={**self.entry.data, CONF_LOADS: normalize_priorities(loads)}
         )
         await self.async_request_refresh()
+
+    async def async_update_global_option(self, key: str, value) -> None:
+        """Update an installer-only global option from dashboard controls."""
+        if not self.installer_unlocked:
+            _LOGGER.warning("Installer-only global update rejected while locked")
+            return
+        allowed = {
+            CONF_LIMIT_W,
+            CONF_WARNING_W,
+            CONF_RESTORE_W,
+            CONF_DELAY_IMMEDIATE_SEC,
+            CONF_DELAY_WARNING_SEC,
+            CONF_WAIT_BETWEEN_SHEDS_SEC,
+            CONF_WAIT_BEFORE_RESTORE_SEC,
+            CONF_WAIT_BETWEEN_RESTORES_SEC,
+        }
+        if key not in allowed:
+            raise ValueError(f"Unsupported dashboard global option: {key}")
+        self.hass.config_entries.async_update_entry(
+            self.entry, options={**self.entry.options, key: value}
+        )
+        await self.async_request_refresh()
+
+    async def async_test_load(self, load_id: str, turn_on: bool) -> bool:
+        """Manually test the configured command entity without changing suspension state."""
+        if not self.installer_unlocked:
+            _LOGGER.warning("Installer-only test rejected while locked")
+            return False
+        load = next(
+            (x for x in self.entry.data.get(CONF_LOADS, []) if x.get(LOAD_ID) == load_id),
+            None,
+        )
+        if not load:
+            return False
+        entity_id = load.get(LOAD_SWITCH, "")
+        ok = await self._call_entity(entity_id, turn_on)
+        if ok:
+            action = "ON" if turn_on else "OFF"
+            self.last_event = f"Test {action}: {load.get(LOAD_NAME, 'Carico')}"
+            await self.async_request_refresh()
+        return ok
 
     def conf(self, key: str, default=None):
         if key in self.entry.options:
@@ -174,8 +222,9 @@ class CLPowerControlCoordinator(DataUpdateCoordinator[dict]):
         loads = move_load_to_priority(
             list(self.entry.data.get(CONF_LOADS, [])), load_id, priority
         )
-        new_data = {**self.entry.data, CONF_LOADS: loads}
-        self.hass.config_entries.async_update_entry(self.entry, data=new_data)
+        self.hass.config_entries.async_update_entry(
+            self.entry, data={**self.entry.data, CONF_LOADS: loads}
+        )
         await self.async_request_refresh()
 
     async def _async_update_data(self) -> dict:
@@ -201,7 +250,6 @@ class CLPowerControlCoordinator(DataUpdateCoordinator[dict]):
                 power = self._load_power(load)
                 switch_state = self._switch_state(load.get(LOAD_SWITCH, ""))
                 suspended = load_id in self._suspended
-                # If user manually switched back on, release CL suspension state.
                 if suspended and switch_state == "on" and power > float(load.get(LOAD_MIN_ACTIVE_W, 10)):
                     self._suspended.pop(load_id, None)
                     self._shed_at.pop(load_id, None)
@@ -239,14 +287,7 @@ class CLPowerControlCoordinator(DataUpdateCoordinator[dict]):
         self._over_warning_since = None
         self._under_restore_since = None
 
-    async def _manage_power(
-        self,
-        current: float,
-        loads: list[dict],
-        limit_w: float,
-        warning_w: float,
-        restore_w: float,
-    ) -> None:
+    async def _manage_power(self, current: float, loads: list[dict], limit_w: float, warning_w: float, restore_w: float) -> None:
         now = datetime.now()
         delay_limit = int(self.conf(CONF_DELAY_IMMEDIATE_SEC, DEFAULT_DELAY_IMMEDIATE_SEC))
         delay_warning = int(self.conf(CONF_DELAY_WARNING_SEC, DEFAULT_DELAY_WARNING_SEC))
@@ -255,20 +296,13 @@ class CLPowerControlCoordinator(DataUpdateCoordinator[dict]):
             self._over_limit_since = self._over_limit_since or now
         else:
             self._over_limit_since = None
-
         if current >= warning_w:
             self._over_warning_since = self._over_warning_since or now
         else:
             self._over_warning_since = None
 
-        immediate = (
-            self._over_limit_since is not None
-            and (now - self._over_limit_since).total_seconds() >= delay_limit
-        )
-        delayed = (
-            self._over_warning_since is not None
-            and (now - self._over_warning_since).total_seconds() >= delay_warning
-        )
+        immediate = self._over_limit_since is not None and (now - self._over_limit_since).total_seconds() >= delay_limit
+        delayed = self._over_warning_since is not None and (now - self._over_warning_since).total_seconds() >= delay_warning
 
         if immediate or delayed:
             await self._shed_one(loads, current, "immediato" if immediate else "ritardato")
@@ -288,8 +322,6 @@ class CLPowerControlCoordinator(DataUpdateCoordinator[dict]):
         wait = int(self.conf(CONF_WAIT_BETWEEN_SHEDS_SEC, DEFAULT_WAIT_BETWEEN_SHEDS_SEC))
         if self._last_shed and (now - self._last_shed).total_seconds() < wait:
             return
-
-        # Higher priority number = less important = shed first.
         for load in sorted(loads, key=lambda x: int(x.get(LOAD_PRIORITY, 999)), reverse=True):
             load_id = load.get(LOAD_ID)
             if not load_id or load_id in self._suspended:
@@ -324,8 +356,6 @@ class CLPowerControlCoordinator(DataUpdateCoordinator[dict]):
         wait = int(self.conf(CONF_WAIT_BETWEEN_RESTORES_SEC, DEFAULT_WAIT_BETWEEN_RESTORES_SEC))
         if self._last_restore and (now - self._last_restore).total_seconds() < wait:
             return
-
-        # Lowest number = highest priority = restore first.
         for load in sorted(loads, key=lambda x: int(x.get(LOAD_PRIORITY, 999))):
             load_id = load.get(LOAD_ID)
             if load_id not in self._suspended:
