@@ -51,7 +51,7 @@ def _load_schema(defaults: dict | None = None) -> vol.Schema:
         vol.Required(LOAD_NAME, default=defaults.get(LOAD_NAME, "Nuovo carico")):
             TextSelector(TextSelectorConfig(type=TextSelectorType.TEXT)),
         vol.Optional(LOAD_SWITCH, description={"suggested_value": defaults.get(LOAD_SWITCH, "")}):
-            EntitySelector(EntitySelectorConfig(domain=["switch", "light"])),
+            EntitySelector(EntitySelectorConfig(domain=["switch", "light", "climate"])),
         vol.Optional(LOAD_POWER_SENSOR, description={"suggested_value": defaults.get(LOAD_POWER_SENSOR, "")}):
             EntitySelector(EntitySelectorConfig(domain="sensor", device_class="power")),
         vol.Required(LOAD_PRIORITY, default=defaults.get(LOAD_PRIORITY, 1)):
