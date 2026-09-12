@@ -1,0 +1,251 @@
+class CLPowerControlLoadManagerCard extends HTMLElement {
+  setConfig(config) {
+    if (!config || !config.entry_id) {
+      throw new Error("CL Power Control: entry_id mancante");
+    }
+    this._config = config;
+    this._name = this._name || "";
+    this._command = this._command || "";
+    this._power = this._power || "";
+    this._removeId = this._removeId || "";
+    if (!this.shadowRoot) {
+      this.attachShadow({ mode: "open" });
+    }
+    this._render();
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    this._syncSelectors();
+  }
+
+  getCardSize() {
+    return 8;
+  }
+
+  _render() {
+    const loads = Array.isArray(this._config.loads) ? this._config.loads : [];
+    this.shadowRoot.innerHTML = `
+      <style>
+        ha-card { padding: 20px; }
+        .title { font-size: 24px; font-weight: 500; display:flex; align-items:center; gap:10px; margin-bottom:18px; }
+        .subtitle { color: var(--secondary-text-color); margin: -6px 0 18px; line-height: 1.4; }
+        .section-title { font-size: 18px; font-weight: 600; margin: 18px 0 12px; }
+        .field { margin: 12px 0; }
+        .label { display:block; font-size:14px; margin:0 0 7px; color:var(--primary-text-color); }
+        .required::after { content:" *"; color:var(--error-color); }
+        ha-selector { width:100%; display:block; }
+        .native-input, .native-select {
+          box-sizing:border-box;
+          width:100%;
+          min-height:56px;
+          padding:0 16px;
+          border:0;
+          border-bottom:1px solid var(--secondary-text-color);
+          border-radius:4px 4px 0 0;
+          background:var(--input-fill-color, rgba(127,127,127,.12));
+          color:var(--primary-text-color);
+          font:inherit;
+          font-size:16px;
+          outline:none;
+        }
+        .native-input:focus, .native-select:focus {
+          border-bottom:2px solid var(--primary-color);
+        }
+        .native-input::placeholder { color:var(--secondary-text-color); opacity:.8; }
+        .actions { display:flex; justify-content:flex-end; gap:10px; margin-top:16px; }
+        .divider { height:1px; background:var(--divider-color); margin:24px 0; }
+        .status { min-height:22px; margin-top:12px; color:var(--secondary-text-color); line-height:1.35; }
+        .status.error { color:var(--error-color); font-weight:500; }
+        .status.ok { color:var(--success-color, var(--primary-color)); font-weight:500; }
+        ha-button.danger { --mdc-theme-primary:var(--error-color); }
+        @media (max-width:600px) {
+          ha-card { padding:16px; }
+          .title { font-size:22px; }
+        }
+      </style>
+      <ha-card>
+        <div class="title"><ha-icon icon="mdi:plus-circle-outline"></ha-icon>Gestione carichi</div>
+        <div class="subtitle">Aggiungi o rimuovi carichi. I selettori entità permettono la ricerca per nome e per entity_id.</div>
+
+        <div class="section-title">Aggiungi carico</div>
+        <div class="field">
+          <label class="label required" for="name">Nome carico</label>
+          <input id="name" class="native-input" type="text" maxlength="64" placeholder="Es. Lavastoviglie" autocomplete="off">
+        </div>
+        <div class="field">
+          <div class="label required">Entità comando</div>
+          <ha-selector id="command"></ha-selector>
+        </div>
+        <div class="field">
+          <div class="label">Sensore potenza</div>
+          <ha-selector id="power"></ha-selector>
+        </div>
+        <div class="actions">
+          <ha-button id="add" raised><ha-icon icon="mdi:plus"></ha-icon>&nbsp;Aggiungi</ha-button>
+        </div>
+
+        <div class="divider"></div>
+        <div class="section-title">Rimuovi carico</div>
+        <div class="field">
+          <label class="label" for="remove">Carico da rimuovere</label>
+          <select id="remove" class="native-select">
+            <option value="">Seleziona un carico...</option>
+            ${loads.map(l => `<option value="${this._esc(l.id)}">P${Number(l.priority || 0)} - ${this._esc(l.name || "Carico")}</option>`).join("")}
+          </select>
+        </div>
+        <div class="actions">
+          <ha-button id="removeBtn" class="danger"><ha-icon icon="mdi:delete"></ha-icon>&nbsp;Rimuovi</ha-button>
+        </div>
+        <div id="status" class="status"></div>
+      </ha-card>
+    `;
+
+    const name = this.shadowRoot.getElementById("name");
+    name.value = this._name;
+    name.addEventListener("input", e => {
+      this._name = e.target.value || "";
+    });
+
+    const command = this.shadowRoot.getElementById("command");
+    command.label = "Seleziona entità comando";
+    command.selector = { entity: { domain: ["switch", "light"] } };
+    command.value = this._command;
+    command.addEventListener("value-changed", e => {
+      this._command = e.detail?.value || "";
+      if (!this._name.trim() && this._hass && this._command) {
+        const friendly = this._hass.states?.[this._command]?.attributes?.friendly_name;
+        if (friendly) {
+          this._name = friendly;
+          name.value = friendly;
+        }
+      }
+    });
+
+    const power = this.shadowRoot.getElementById("power");
+    power.label = "Seleziona sensore potenza";
+    power.selector = { entity: { domain: "sensor", device_class: "power" } };
+    power.value = this._power;
+    power.addEventListener("value-changed", e => {
+      this._power = e.detail?.value || "";
+    });
+
+    const remove = this.shadowRoot.getElementById("remove");
+    remove.value = this._removeId;
+    remove.addEventListener("change", e => {
+      this._removeId = e.target.value || "";
+      if (this._removeId) {
+        const load = loads.find(l => l.id === this._removeId);
+        this._status(`Selezionato: ${load?.name || "carico"}. Premi Rimuovi per continuare.`);
+      } else {
+        this._status("");
+      }
+    });
+
+    this.shadowRoot.getElementById("add").addEventListener("click", () => this._addLoad());
+    this.shadowRoot.getElementById("removeBtn").addEventListener("click", () => this._removeLoad());
+    this._syncSelectors();
+  }
+
+  _syncSelectors() {
+    if (!this.shadowRoot || !this._hass) return;
+    const command = this.shadowRoot.getElementById("command");
+    const power = this.shadowRoot.getElementById("power");
+    if (command) command.hass = this._hass;
+    if (power) power.hass = this._hass;
+  }
+
+  async _addLoad() {
+    if (!this._hass) return;
+    const nameInput = this.shadowRoot.getElementById("name");
+    const name = String(nameInput?.value || this._name || "").trim();
+    this._name = name;
+
+    if (!name) {
+      this._status("Inserisci il nome del carico.", true);
+      nameInput?.focus();
+      return;
+    }
+    if (!this._command) {
+      this._status("Seleziona l'entità comando.", true);
+      return;
+    }
+
+    this._status("Aggiunta in corso...");
+    try {
+      await this._hass.callService("cl_power_control", "add_load", {
+        entry_id: this._config.entry_id,
+        name,
+        command_entity: this._command,
+        power_sensor: this._power || "",
+      });
+      this._status(`Carico aggiunto: ${name}. Aggiornamento dashboard...`, false, true);
+      this._name = "";
+      this._command = "";
+      this._power = "";
+      window.setTimeout(() => window.location.reload(), 1400);
+    } catch (err) {
+      this._status(`Errore aggiunta carico: ${err?.message || err}`, true);
+    }
+  }
+
+  async _removeLoad() {
+    if (!this._hass) return;
+    const select = this.shadowRoot.getElementById("remove");
+    const loadId = String(select?.value || this._removeId || "");
+    this._removeId = loadId;
+
+    if (!loadId) {
+      this._status("Seleziona prima il carico da rimuovere.", true);
+      select?.focus();
+      return;
+    }
+
+    const load = (this._config.loads || []).find(l => l.id === loadId);
+    const label = load?.name || "il carico selezionato";
+    if (!window.confirm(`Confermi la rimozione di "${label}"?`)) return;
+
+    this._status("Rimozione in corso...");
+    try {
+      await this._hass.callService("cl_power_control", "remove_load", {
+        entry_id: this._config.entry_id,
+        load_id: loadId,
+      });
+      this._status(`Carico rimosso: ${label}. Aggiornamento dashboard...`, false, true);
+      this._removeId = "";
+      window.setTimeout(() => window.location.reload(), 1400);
+    } catch (err) {
+      this._status(`Errore rimozione carico: ${err?.message || err}`, true);
+    }
+  }
+
+  _status(text, error = false, ok = false) {
+    const el = this.shadowRoot?.getElementById("status");
+    if (!el) return;
+    el.textContent = text;
+    el.className = `status${error ? " error" : ok ? " ok" : ""}`;
+  }
+
+  _esc(value) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+}
+
+if (!customElements.get("cl-power-control-load-manager-card")) {
+  customElements.define("cl-power-control-load-manager-card", CLPowerControlLoadManagerCard);
+}
+
+window.customCards = window.customCards || [];
+if (!window.customCards.some(card => card.type === "cl-power-control-load-manager-card")) {
+  window.customCards.push({
+    type: "cl-power-control-load-manager-card",
+    name: "CL Power Control - Gestione carichi",
+    description: "Gestione installatore dei carichi CL Power Control con ricerca entità nativa.",
+    preview: false,
+  });
+}
