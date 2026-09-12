@@ -13,13 +13,7 @@ from .const import (
 
 
 def _device(entry) -> DeviceInfo:
-    return DeviceInfo(
-        identifiers={(DOMAIN, entry.entry_id)},
-        name=entry.title,
-        manufacturer=MANUFACTURER,
-        model=NAME,
-        sw_version=VERSION,
-    )
+    return DeviceInfo(identifiers={(DOMAIN, entry.entry_id)}, name=entry.title, manufacturer=MANUFACTURER, model=NAME, sw_version=VERSION)
 
 
 def _priority_label(value: int, count: int) -> str:
@@ -45,41 +39,30 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
 class _CLLoadSelectBase(CoordinatorEntity, SelectEntity):
     _attr_has_entity_name = True
-
     def __init__(self, coordinator, entry, load_id):
         super().__init__(coordinator)
         self._entry = entry
         self._load_id = load_id
         self._attr_device_info = _device(entry)
-
     def _load(self):
         if not self.coordinator.data:
             return None
-        return next(
-            (x for x in self.coordinator.data.get("loads", []) if x.get(LOAD_ID) == self._load_id),
-            None,
-        )
+        return next((x for x in self.coordinator.data.get("loads", []) if x.get(LOAD_ID) == self._load_id), None)
 
 
 class CLLoadPrioritySelect(_CLLoadSelectBase):
-    """Customer-facing priority selector. Priority 1 is the most important."""
-
     _attr_icon = "mdi:sort-numeric-ascending"
-
     def __init__(self, coordinator, entry, load_id):
         super().__init__(coordinator, entry, load_id)
         self._attr_unique_id = f"{entry.entry_id}_load_{load_id}_priority"
-
     @property
     def name(self):
         load = self._load()
         return f"{load.get(LOAD_NAME, 'Carico')} Priorità" if load else "Priorità"
-
     @property
     def options(self):
         count = max(1, len(self.coordinator.data.get("loads", [])) if self.coordinator.data else 1)
         return [_priority_label(i, count) for i in range(1, count + 1)]
-
     @property
     def current_option(self):
         load = self._load()
@@ -87,97 +70,64 @@ class CLLoadPrioritySelect(_CLLoadSelectBase):
             return None
         count = max(1, len(self.coordinator.data.get("loads", [])))
         return _priority_label(int(load.get(LOAD_PRIORITY, 1)), count)
-
     async def async_select_option(self, option: str) -> None:
-        value = int(option.split(" ", 1)[0])
-        await self.coordinator.async_set_priority(self._load_id, value)
+        await self.coordinator.async_set_priority(self._load_id, int(option.split(" ", 1)[0]))
 
 
 class CLLoadCommandEntitySelect(_CLLoadSelectBase):
-    """Installer-only selector for the entity that CL Power Control switches."""
-
+    """Installer-only selector for switch, light or climate command entity."""
     _attr_icon = "mdi:electric-switch"
-
     def __init__(self, coordinator, entry, load_id):
         super().__init__(coordinator, entry, load_id)
         self._attr_unique_id = f"{entry.entry_id}_load_{load_id}_command_entity"
-
     @property
     def name(self):
         load = self._load()
         return f"{load.get(LOAD_NAME, 'Carico')} Entità comando" if load else "Entità comando"
-
     @property
     def available(self) -> bool:
         return self.coordinator.installer_unlocked
-
     @property
     def options(self):
-        choices = sorted(
-            state.entity_id
-            for state in self.hass.states.async_all()
-            if state.entity_id.split(".", 1)[0] in ("switch", "light")
-        )
+        choices = sorted(state.entity_id for state in self.hass.states.async_all() if state.entity_id.split(".", 1)[0] in ("switch", "light", "climate"))
         load = self._load()
         current = load.get(LOAD_SWITCH, "") if load else ""
         if current and current not in choices:
             choices.append(current)
         return [UNCONFIGURED_OPTION, *choices]
-
     @property
     def current_option(self):
         load = self._load()
-        if not load:
-            return UNCONFIGURED_OPTION
-        return load.get(LOAD_SWITCH, "") or UNCONFIGURED_OPTION
-
+        return load.get(LOAD_SWITCH, "") or UNCONFIGURED_OPTION if load else UNCONFIGURED_OPTION
     async def async_select_option(self, option: str) -> None:
-        if not self.coordinator.installer_unlocked:
-            return
-        value = "" if option == UNCONFIGURED_OPTION else option
-        await self.coordinator.async_update_load_field(self._load_id, LOAD_SWITCH, value)
+        if self.coordinator.installer_unlocked:
+            await self.coordinator.async_update_load_field(self._load_id, LOAD_SWITCH, "" if option == UNCONFIGURED_OPTION else option)
 
 
 class CLLoadPowerSensorSelect(_CLLoadSelectBase):
-    """Installer-only selector for the per-load power sensor."""
-
     _attr_icon = "mdi:flash"
-
     def __init__(self, coordinator, entry, load_id):
         super().__init__(coordinator, entry, load_id)
         self._attr_unique_id = f"{entry.entry_id}_load_{load_id}_power_sensor"
-
     @property
     def name(self):
         load = self._load()
         return f"{load.get(LOAD_NAME, 'Carico')} Sensore potenza" if load else "Sensore potenza"
-
     @property
     def available(self) -> bool:
         return self.coordinator.installer_unlocked
-
     @property
     def options(self):
-        choices = sorted(
-            state.entity_id
-            for state in self.hass.states.async_all("sensor")
-            if state.attributes.get("device_class") == "power"
-        )
+        choices = sorted(state.entity_id for state in self.hass.states.async_all("sensor") if state.attributes.get("device_class") == "power")
         load = self._load()
         current = load.get(LOAD_POWER_SENSOR, "") if load else ""
         if current and current not in choices:
             choices.append(current)
         return [UNCONFIGURED_OPTION, *choices]
-
     @property
     def current_option(self):
         load = self._load()
-        if not load:
-            return UNCONFIGURED_OPTION
-        return load.get(LOAD_POWER_SENSOR, "") or UNCONFIGURED_OPTION
-
+        return load.get(LOAD_POWER_SENSOR, "") or UNCONFIGURED_OPTION if load else UNCONFIGURED_OPTION
     async def async_select_option(self, option: str) -> None:
-        if not self.coordinator.installer_unlocked:
-            return
-        value = "" if option == UNCONFIGURED_OPTION else option
-        await self.coordinator.async_update_load_field(self._load_id, LOAD_POWER_SENSOR, value)
+        if self.coordinator.installer_unlocked:
+            await self.coordinator.async_update_load_field(self._load_id, LOAD_POWER_SENSOR, "" if option == UNCONFIGURED_OPTION else option)
