@@ -28,6 +28,7 @@ class CLPowerControlCoordinator(DataUpdateCoordinator[dict]):
         self.entry = entry
         self._suspended: dict[str, float] = {}
         self._shed_at: dict[str, datetime] = {}
+        self._climate_restore_modes: dict[str, str] = {}
         self._over_limit_since: datetime | None = None
         self._over_warning_since: datetime | None = None
         self._under_restore_since: datetime | None = None
@@ -167,8 +168,7 @@ class CLPowerControlCoordinator(DataUpdateCoordinator[dict]):
         )
         if not load:
             return False
-        entity_id = load.get(LOAD_SWITCH, "")
-        ok = await self._call_entity(entity_id, turn_on)
+        ok = await self._call_load(load, turn_on)
         if ok:
             action = "ON" if turn_on else "OFF"
             self.last_event = f"Test {action}: {load.get(LOAD_NAME, 'Carico')}"
@@ -191,10 +191,30 @@ class CLPowerControlCoordinator(DataUpdateCoordinator[dict]):
         except (TypeError, ValueError):
             return None
 
+    def _entity_domain(self, entity_id: str) -> str:
+        return entity_id.split(".", 1)[0] if entity_id and "." in entity_id else ""
+
+    def _load_is_active(self, load: dict) -> bool:
+        """Return whether a configured load is actually active."""
+        entity_id = load.get(LOAD_SWITCH, "")
+        state = self.hass.states.get(entity_id) if entity_id else None
+        if state is None or state.state in ("unknown", "unavailable", "", "off"):
+            return False
+
+        if self._entity_domain(entity_id) == "climate":
+            hvac_action = str(state.attributes.get("hvac_action", "")).lower()
+            if hvac_action in ("off", "idle"):
+                return False
+            return True
+
+        return state.state == "on"
+
     def _load_power(self, load: dict) -> float:
         measured = self._read_float(load.get(LOAD_POWER_SENSOR, ""))
         if measured is not None:
             return measured
+        if not self._load_is_active(load):
+            return 0.0
         return float(load.get(LOAD_ESTIMATED_W, 0) or 0)
 
     def _switch_state(self, entity_id: str) -> str:
@@ -204,7 +224,7 @@ class CLPowerControlCoordinator(DataUpdateCoordinator[dict]):
     async def _call_entity(self, entity_id: str, turn_on: bool) -> bool:
         if not entity_id or "." not in entity_id:
             return False
-        domain = entity_id.split(".", 1)[0]
+        domain = self._entity_domain(entity_id)
         service = "turn_on" if turn_on else "turn_off"
         if not self.hass.services.has_service(domain, service):
             _LOGGER.warning("No service %s.%s for %s", domain, service, entity_id)
@@ -217,6 +237,73 @@ class CLPowerControlCoordinator(DataUpdateCoordinator[dict]):
         except Exception as err:  # noqa: BLE001
             _LOGGER.error("Failed %s.%s on %s: %s", domain, service, entity_id, err)
             return False
+
+    async def _call_climate(self, load: dict, turn_on: bool) -> bool:
+        """Switch a climate load without cutting mains power."""
+        entity_id = load.get(LOAD_SWITCH, "")
+        load_id = str(load.get(LOAD_ID, ""))
+        state = self.hass.states.get(entity_id) if entity_id else None
+        if state is None:
+            return False
+
+        hvac_modes = [str(mode) for mode in state.attributes.get("hvac_modes", [])]
+        current_mode = str(state.state or "")
+
+        if not turn_on:
+            if current_mode not in ("", "off", "unknown", "unavailable"):
+                self._climate_restore_modes[load_id] = current_mode
+
+            if "off" in hvac_modes and self.hass.services.has_service("climate", "set_hvac_mode"):
+                service = "set_hvac_mode"
+                data = {"entity_id": entity_id, "hvac_mode": "off"}
+            elif self.hass.services.has_service("climate", "turn_off"):
+                service = "turn_off"
+                data = {"entity_id": entity_id}
+            elif self.hass.services.has_service("climate", "set_hvac_mode"):
+                service = "set_hvac_mode"
+                data = {"entity_id": entity_id, "hvac_mode": "off"}
+            else:
+                _LOGGER.warning("No supported climate OFF service for %s", entity_id)
+                return False
+        else:
+            restore_mode = self._climate_restore_modes.get(load_id, "")
+            if (
+                restore_mode
+                and restore_mode != "off"
+                and (not hvac_modes or restore_mode in hvac_modes)
+                and self.hass.services.has_service("climate", "set_hvac_mode")
+            ):
+                service = "set_hvac_mode"
+                data = {"entity_id": entity_id, "hvac_mode": restore_mode}
+            elif self.hass.services.has_service("climate", "turn_on"):
+                service = "turn_on"
+                data = {"entity_id": entity_id}
+            else:
+                preferred = ("auto", "heat_cool", "cool", "heat", "dry", "fan_only")
+                fallback_mode = next(
+                    (mode for mode in preferred if mode in hvac_modes),
+                    next((mode for mode in hvac_modes if mode != "off"), ""),
+                )
+                if not fallback_mode or not self.hass.services.has_service("climate", "set_hvac_mode"):
+                    _LOGGER.warning("No supported climate ON service for %s", entity_id)
+                    return False
+                service = "set_hvac_mode"
+                data = {"entity_id": entity_id, "hvac_mode": fallback_mode}
+
+        try:
+            await self.hass.services.async_call("climate", service, data, blocking=True)
+            if turn_on:
+                self._climate_restore_modes.pop(load_id, None)
+            return True
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.error("Failed climate.%s on %s: %s", service, entity_id, err)
+            return False
+
+    async def _call_load(self, load: dict, turn_on: bool) -> bool:
+        entity_id = load.get(LOAD_SWITCH, "")
+        if self._entity_domain(entity_id) == "climate":
+            return await self._call_climate(load, turn_on)
+        return await self._call_entity(entity_id, turn_on)
 
     async def async_set_priority(self, load_id: str, priority: int) -> None:
         loads = move_load_to_priority(
@@ -250,7 +337,7 @@ class CLPowerControlCoordinator(DataUpdateCoordinator[dict]):
                 power = self._load_power(load)
                 switch_state = self._switch_state(load.get(LOAD_SWITCH, ""))
                 suspended = load_id in self._suspended
-                if suspended and switch_state == "on" and power > float(load.get(LOAD_MIN_ACTIVE_W, 10)):
+                if suspended and self._load_is_active(load) and power > float(load.get(LOAD_MIN_ACTIVE_W, 10)):
                     self._suspended.pop(load_id, None)
                     self._shed_at.pop(load_id, None)
                     suspended = False
@@ -334,9 +421,9 @@ class CLPowerControlCoordinator(DataUpdateCoordinator[dict]):
             power = self._load_power(load)
             if power <= float(load.get(LOAD_MIN_ACTIVE_W, 10)):
                 continue
-            if self._switch_state(entity_id) not in ("on", "playing", "heat", "cool"):
+            if not self._load_is_active(load):
                 continue
-            if await self._call_entity(entity_id, False):
+            if await self._call_load(load, False):
                 self._suspended[load_id] = max(power, float(load.get(LOAD_ESTIMATED_W, 0) or 0), 1.0)
                 self._shed_at[load_id] = now
                 self._last_shed = now
@@ -365,8 +452,7 @@ class CLPowerControlCoordinator(DataUpdateCoordinator[dict]):
             reserved = self._suspended[load_id]
             if current + reserved > restore_w:
                 continue
-            entity_id = load.get(LOAD_SWITCH, "")
-            if await self._call_entity(entity_id, True):
+            if await self._call_load(load, True):
                 self._suspended.pop(load_id, None)
                 self._shed_at.pop(load_id, None)
                 self._last_restore = now
