@@ -5,7 +5,7 @@ from homeassistant.const import Platform
 
 DOMAIN = "cl_power_control"
 NAME = "CL Power Control"
-VERSION = "0.3.1-beta.1"
+VERSION = "0.4.0-dev.1"
 MANUFACTURER = "CL Impianti"
 
 CONF_NAME = "name"
@@ -23,6 +23,17 @@ CONF_INSTALLER_PIN_SALT = "installer_pin_salt"
 CONF_INSTALLER_PIN_HASH = "installer_pin_hash"
 CONF_ENABLED = "enabled"
 CONF_CREATE_DASHBOARD = "create_dashboard"
+
+# Energy Control foundation. Normalized conventions:
+# grid_power > 0 = import, grid_power < 0 = export
+# battery_power > 0 = discharge, battery_power < 0 = charge
+CONF_ENERGY_ENABLED = "energy_enabled"
+CONF_GRID_POWER_SENSOR = "grid_power_sensor"
+CONF_PV_POWER_SENSOR = "pv_power_sensor"
+CONF_BATTERY_POWER_SENSOR = "battery_power_sensor"
+CONF_BATTERY_SOC_SENSOR = "battery_soc_sensor"
+CONF_GRID_POWER_INVERT = "grid_power_invert"
+CONF_BATTERY_POWER_INVERT = "battery_power_invert"
 
 LOAD_ID = "id"
 LOAD_NAME = "name"
@@ -43,6 +54,9 @@ DEFAULT_DELAY_WARNING_SEC = 120
 DEFAULT_WAIT_BETWEEN_SHEDS_SEC = 10
 DEFAULT_WAIT_BEFORE_RESTORE_SEC = 60
 DEFAULT_WAIT_BETWEEN_RESTORES_SEC = 30
+DEFAULT_ENERGY_ENABLED = False
+DEFAULT_GRID_POWER_INVERT = False
+DEFAULT_BATTERY_POWER_INVERT = False
 
 INSTALLER_SESSION_MINUTES = 15
 UNCONFIGURED_OPTION = "Non configurato"
