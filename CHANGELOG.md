@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.0
+- Prima release stabile della serie 0.3.x.
+- Gestione installatore avanzata direttamente dalla dashboard.
+- Aggiunta carichi con selettori Home Assistant ricercabili per entità comando e sensore potenza.
+- Rimozione carichi con conferma.
+- Test ON / Test OFF del singolo carico.
+- Priorità configurabili.
+- Auto riattivazione, Mai distaccabile, Potenza minima attiva e Potenza stimata configurabili per carico.
+- Soglie e temporizzazioni generali modificabili dalla dashboard installatore.
+- Sessione installatore protetta da PIN con durata temporanea.
+- Dashboard e branding aggiornati con logo CL + telecamera a colori su sfondo trasparente.
+- Versione derivata dalla 0.3.0-beta.6, validata localmente e tramite HACS.
+
 ## 0.3.0-beta.6
 - Ripristinato un campo Nome carico sempre visibile e affidabile nella card installatore.
 - Il nome viene anche proposto automaticamente dal friendly name dell'entità comando selezionata.
