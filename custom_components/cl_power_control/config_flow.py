@@ -118,6 +118,11 @@ class CLPowerControlOptionsFlow(config_entries.OptionsFlow):
         self._installer_unlocked = False
         self._unlock_target = "installer"
 
+    def _shared_installer_unlocked(self) -> bool:
+        """Reuse the 15-minute installer session opened from dashboard/options."""
+        coordinator = self.hass.data.get(DOMAIN, {}).get(self.config_entry.entry_id)
+        return bool(self._installer_unlocked or (coordinator and coordinator.installer_unlocked))
+
     async def async_step_init(self, user_input=None):
         return self.async_show_menu(step_id="init", menu_options=["quick", "loads", "installer_unlock", "installer_pin_reset"])
 
@@ -128,9 +133,6 @@ class CLPowerControlOptionsFlow(config_entries.OptionsFlow):
         return self.async_show_form(step_id="quick", data_schema=_power_schema(self._data))
 
     async def async_step_loads(self, user_input=None):
-        if not self._installer_unlocked:
-            self._unlock_target = "loads"
-            return await self.async_step_installer_unlock()
         loads = sort_loads(list(self._data.get(CONF_LOADS, [])))
         options = ["load_add"]
         if loads:
@@ -175,14 +177,7 @@ class CLPowerControlOptionsFlow(config_entries.OptionsFlow):
             return await self._save()
         return self.async_show_form(step_id="load_delete", data_schema=vol.Schema({vol.Required("load_id"): vol.In(choices)}))
 
-
     async def async_step_installer_pin_reset(self, user_input=None):
-        """Admin recovery path: replace a lost/legacy installer PIN.
-
-        Home Assistant integration options are available to HA administrators.
-        The installer PIN is an application-level guard, not a replacement for
-        Home Assistant administrator permissions.
-        """
         errors = {}
         if user_input is not None:
             pin = str(user_input["new_pin"]).strip()
@@ -207,12 +202,15 @@ class CLPowerControlOptionsFlow(config_entries.OptionsFlow):
         )
 
     async def async_step_installer_unlock(self, user_input=None):
+        if self._shared_installer_unlocked():
+            return await self.async_step_installer()
         errors = {}
         if user_input is not None:
             if verify_pin(user_input["pin"], self._data.get(CONF_INSTALLER_PIN_SALT, ""), self._data.get(CONF_INSTALLER_PIN_HASH, "")):
                 self._installer_unlocked = True
-                if self._unlock_target == "loads":
-                    return await self.async_step_loads()
+                coordinator = self.hass.data.get(DOMAIN, {}).get(self.config_entry.entry_id)
+                if coordinator is not None:
+                    await coordinator.async_unlock_installer(user_input["pin"])
                 return await self.async_step_installer()
             errors["base"] = "invalid_pin"
         return self.async_show_form(step_id="installer_unlock", data_schema=vol.Schema({
@@ -220,12 +218,12 @@ class CLPowerControlOptionsFlow(config_entries.OptionsFlow):
         }), errors=errors)
 
     async def async_step_installer(self, user_input=None):
-        if not self._installer_unlocked:
+        if not self._shared_installer_unlocked():
             return await self.async_step_installer_unlock()
         return self.async_show_menu(step_id="installer", menu_options=["loads", "installer_power", "installer_timing", "installer_pin_change", "init"])
 
     async def async_step_installer_power(self, user_input=None):
-        if not self._installer_unlocked:
+        if not self._shared_installer_unlocked():
             return await self.async_step_installer_unlock()
         if user_input is not None:
             self._data.update(user_input)
@@ -233,7 +231,7 @@ class CLPowerControlOptionsFlow(config_entries.OptionsFlow):
         return self.async_show_form(step_id="installer_power", data_schema=_power_schema(self._data))
 
     async def async_step_installer_timing(self, user_input=None):
-        if not self._installer_unlocked:
+        if not self._shared_installer_unlocked():
             return await self.async_step_installer_unlock()
         if user_input is not None:
             self._data.update(user_input)
@@ -241,7 +239,7 @@ class CLPowerControlOptionsFlow(config_entries.OptionsFlow):
         return self.async_show_form(step_id="installer_timing", data_schema=_timing_schema(self._data))
 
     async def async_step_installer_pin_change(self, user_input=None):
-        if not self._installer_unlocked:
+        if not self._shared_installer_unlocked():
             return await self.async_step_installer_unlock()
         errors = {}
         if user_input is not None:
