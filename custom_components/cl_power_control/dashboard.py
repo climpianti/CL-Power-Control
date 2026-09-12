@@ -49,7 +49,7 @@ async def async_install_assets(hass) -> None:
 def async_register_frontend_resource(hass) -> None:
     """Load the CL Power Control custom card as a frontend module."""
     frontend.add_extra_js_url(
-        hass, "/local/cl_power_control/frontend.js?v=0.3.0-beta.6"
+        hass, "/local/cl_power_control/frontend.js?v=0.3.0"
     )
 
 
