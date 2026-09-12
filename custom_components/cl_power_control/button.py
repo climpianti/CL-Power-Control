@@ -23,6 +23,8 @@ async def async_setup_entry(hass, entry, async_add_entities):
     entities = [
         CLInstallerUnlockButton(coordinator, entry),
         CLInstallerLockButton(coordinator, entry),
+        CLAddLoadButton(coordinator, entry),
+        CLRemoveLoadButton(coordinator, entry),
     ]
     for load in entry.data.get(CONF_LOADS, []):
         load_id = load[LOAD_ID]
@@ -33,11 +35,11 @@ async def async_setup_entry(hass, entry, async_add_entities):
     async_add_entities(entities)
 
 
-class _CLInstallerButton(ButtonEntity):
+class _CLInstallerButton(CoordinatorEntity, ButtonEntity):
     _attr_has_entity_name = True
 
     def __init__(self, coordinator, entry):
-        self._coordinator = coordinator
+        super().__init__(coordinator)
         self._entry = entry
         self._attr_device_info = _device(entry)
 
@@ -51,7 +53,7 @@ class CLInstallerUnlockButton(_CLInstallerButton):
         self._attr_unique_id = f"{entry.entry_id}_installer_unlock"
 
     async def async_press(self) -> None:
-        await self._coordinator.async_unlock_pending_installer()
+        await self.coordinator.async_unlock_pending_installer()
 
 
 class CLInstallerLockButton(_CLInstallerButton):
@@ -64,11 +66,11 @@ class CLInstallerLockButton(_CLInstallerButton):
 
     @property
     def available(self) -> bool:
-        return self._coordinator.installer_unlocked
+        return self.coordinator.installer_unlocked
 
     async def async_press(self) -> None:
-        self._coordinator.lock_installer()
-        await self._coordinator.async_request_refresh()
+        self.coordinator.lock_installer()
+        await self.coordinator.async_request_refresh()
 
 
 class CLLoadTestButton(CoordinatorEntity, ButtonEntity):
@@ -108,3 +110,35 @@ class CLLoadTestButton(CoordinatorEntity, ButtonEntity):
 
     async def async_press(self) -> None:
         await self.coordinator.async_test_load(self._load_id, self._turn_on)
+
+
+class CLAddLoadButton(_CLInstallerButton):
+    _attr_name = "Aggiungi carico"
+    _attr_icon = "mdi:plus-circle"
+
+    def __init__(self, coordinator, entry):
+        super().__init__(coordinator, entry)
+        self._attr_unique_id = f"{entry.entry_id}_installer_add_load"
+
+    @property
+    def available(self) -> bool:
+        return self.coordinator.installer_unlocked
+
+    async def async_press(self) -> None:
+        await self.coordinator.async_add_pending_load()
+
+
+class CLRemoveLoadButton(_CLInstallerButton):
+    _attr_name = "Rimuovi carico"
+    _attr_icon = "mdi:delete"
+
+    def __init__(self, coordinator, entry):
+        super().__init__(coordinator, entry)
+        self._attr_unique_id = f"{entry.entry_id}_installer_remove_load_button"
+
+    @property
+    def available(self) -> bool:
+        return self.coordinator.installer_unlocked
+
+    async def async_press(self) -> None:
+        await self.coordinator.async_remove_selected_load()
