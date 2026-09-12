@@ -49,7 +49,7 @@ async def async_install_assets(hass) -> None:
 def async_register_frontend_resource(hass) -> None:
     """Load the CL Power Control custom card as a frontend module."""
     frontend.add_extra_js_url(
-        hass, "/local/cl_power_control/frontend.js?v=0.3.0"
+        hass, "/local/cl_power_control/frontend.js?v=0.4.0-dev.1"
     )
 
 
@@ -65,6 +65,19 @@ def _dashboards(hass):
 def _eid(hass, entry, platform, unique_suffix, fallback=""):
     registry = er.async_get(hass)
     return registry.async_get_entity_id(platform, DOMAIN, f"{entry.entry_id}_{unique_suffix}") or fallback
+
+
+def _header_card(title: str, subtitle: str):
+    return {
+        "type": "markdown",
+        "content": (
+            '<table role="presentation" width="100%"><tr>'
+            '<td width="104" valign="middle"><img src="/local/cl_power_control/header_logo.png" width="86"></td>'
+            f'<td valign="middle"><span style="font-size:24px"><b>{title}</b></span><br>'
+            f'<span style="font-size:14px">{subtitle}</span></td>'
+            '</tr></table>'
+        ),
+    }
 
 
 def _load_card(hass, entry, load):
@@ -157,32 +170,39 @@ def _build(hass, entry):
     loads = entry.data.get(CONF_LOADS, [])
     load_cards = [_load_card(hass, entry, load) for load in loads]
     installer_load_cards = [_installer_load_card(hass, entry, load) for load in loads]
+
     suspended_entities = []
     for load in loads:
         suspended = _eid(hass, entry, "binary_sensor", f"load_{load[LOAD_ID]}_suspended")
         if suspended:
             suspended_entities.append({"entity": suspended, "name": load.get(LOAD_NAME, "Carico")})
 
-    cards = [
-        {
-            "type": "markdown",
-            "content": (
-                '<table role="presentation" width="100%"><tr>'
-                '<td width="104" valign="middle"><img src="/local/cl_power_control/header_logo.png" width="86"></td>'
-                '<td valign="middle"><span style="font-size:24px"><b>CL Power Control</b></span><br>'
-                '<span style="font-size:14px">Gestione intelligente dei carichi elettrici</span></td>'
-                '</tr></table>'
-            ),
-        },
+    overview_cards = [
+        _header_card("CL Power Control", "Gestione intelligente dei carichi e dell'energia"),
         {
             "type": "grid", "columns": 2, "square": False,
             "cards": [
-                {"type": "tile", "entity": enabled, "name": "Controllo"},
+                {"type": "tile", "entity": enabled, "name": "Power Control"},
                 {"type": "tile", "entity": current, "name": "Potenza attuale"},
-                {"type": "tile", "entity": headroom, "name": "Disponibile"},
-                {"type": "tile", "entity": suspended_power, "name": "Sospesa"},
+                {"type": "tile", "entity": headroom, "name": "Potenza disponibile"},
+                {"type": "tile", "entity": suspended_power, "name": "Potenza sospesa"},
             ],
         },
+        {"type": "entity", "entity": last_event, "name": "Ultimo intervento"},
+        {
+            "type": "markdown",
+            "title": "Moduli",
+            "content": (
+                "### ⚡ Power Control\n"
+                "Priorità, distacco e riattivazione intelligente dei carichi.\n\n"
+                "### ☀️ Energy Control\n"
+                "Modulo dedicato a fotovoltaico, rete, batteria, surplus, wallbox ed EPS/generatore."
+            ),
+        },
+    ]
+
+    power_cards = [
+        _header_card("Power Control", "Priorità e gestione automatica dei carichi"),
         {
             "type": "history-graph",
             "title": "Andamento potenza",
@@ -195,10 +215,9 @@ def _build(hass, entry):
                 {"entity": restore, "name": "Riattivazione"},
             ],
         },
-        {"type": "entity", "entity": last_event, "name": "Ultimo intervento"},
         {
             "type": "markdown",
-            "title": "Priorità",
+            "title": "Come funzionano le priorità",
             "content": (
                 "**Priorità 1 = carico più importante:** ultimo a essere distaccato e primo a essere riattivato.  \n"
                 "Il numero più alto identifica il carico meno importante e viene distaccato per primo."
@@ -207,9 +226,41 @@ def _build(hass, entry):
     ]
 
     if suspended_entities:
-        cards.append({"type": "history-graph", "title": "Storico distacco carichi", "hours_to_show": 12, "refresh_interval": 15, "entities": suspended_entities})
+        power_cards.append({
+            "type": "history-graph",
+            "title": "Storico distacco carichi",
+            "hours_to_show": 12,
+            "refresh_interval": 15,
+            "entities": suspended_entities,
+        })
     if load_cards:
-        cards.append({"type": "vertical-stack", "cards": [{"type": "markdown", "content": "## Carichi e priorità"}, *load_cards]})
+        power_cards.append({
+            "type": "vertical-stack",
+            "cards": [{"type": "markdown", "content": "## Carichi e priorità"}, *load_cards],
+        })
+
+    energy_cards = [
+        _header_card("Energy Control", "Fotovoltaico, rete, batteria e gestione energetica"),
+        {
+            "type": "markdown",
+            "title": "☀️ CL Energy Control",
+            "content": (
+                "Questa sezione è stata predisposta come modulo separato all'interno della stessa integrazione.\n\n"
+                "**Funzioni previste:**\n"
+                "- Produzione fotovoltaica e scambio rete\n"
+                "- Batteria e SOC\n"
+                "- Surplus fotovoltaico\n"
+                "- Wallbox e ricarica dinamica\n"
+                "- EPS / backup / generatore\n"
+                "- Scambio della potenza disponibile con Power Control\n\n"
+                "Le funzioni Energy Control verranno abilitate progressivamente senza modificare il motore Power Control già collaudato."
+            ),
+        },
+    ]
+
+    installer_cards = [
+        _header_card("Installatore", "Configurazione avanzata CL Power Control"),
+    ]
 
     if installer_mode:
         locked_rows = []
@@ -220,7 +271,7 @@ def _build(hass, entry):
         if installer_unlock:
             locked_rows.append({"entity": installer_unlock, "name": "Sblocca"})
         if locked_rows:
-            cards.append({
+            installer_cards.append({
                 "type": "conditional",
                 "conditions": [{"entity": installer_mode, "state": "off"}],
                 "card": {"type": "entities", "title": "🔒 Accesso installatore", "show_header_toggle": False, "entities": locked_rows},
@@ -232,7 +283,7 @@ def _build(hass, entry):
         if installer_lock:
             unlocked_rows.append({"entity": installer_lock, "name": "Blocca ora"})
         if unlocked_rows:
-            cards.append({
+            installer_cards.append({
                 "type": "conditional",
                 "conditions": [{"entity": installer_mode, "state": "on"}],
                 "card": {"type": "entities", "title": "🔓 Modalità installatore attiva", "show_header_toggle": False, "entities": unlocked_rows},
@@ -251,27 +302,53 @@ def _build(hass, entry):
             ],
         }
 
-        installer_cards = [management_card, _installer_global_card(hass, entry), *installer_load_cards]
-        cards.append({
+        protected_cards = [
+            {
+                "type": "markdown",
+                "content": (
+                    "## Configurazione Power Control\n"
+                    "Modifica parametri e associazioni direttamente da questa sezione. "
+                    "I pulsanti **Test ON/OFF** comandano realmente l'entità selezionata."
+                ),
+            },
+            management_card,
+            _installer_global_card(hass, entry),
+            *installer_load_cards,
+        ]
+        installer_cards.append({
             "type": "conditional",
             "conditions": [{"entity": installer_mode, "state": "on"}],
-            "card": {
-                "type": "vertical-stack",
-                "cards": [
-                    {
-                        "type": "markdown",
-                        "content": (
-                            "## Configurazione installatore\n"
-                            "Modifica parametri e associazioni direttamente da questa dashboard. "
-                            "I pulsanti **Test ON/OFF** comandano realmente l'entità selezionata."
-                        ),
-                    },
-                    *installer_cards,
-                ],
-            },
+            "card": {"type": "vertical-stack", "cards": protected_cards},
         })
 
-    return {"views": [{"title": "CL Power Control", "path": "panoramica", "icon": "mdi:transmission-tower", "cards": cards}]}
+    return {
+        "views": [
+            {
+                "title": "Panoramica",
+                "path": "panoramica",
+                "icon": "mdi:view-dashboard-outline",
+                "cards": overview_cards,
+            },
+            {
+                "title": "Power Control",
+                "path": "power-control",
+                "icon": "mdi:transmission-tower",
+                "cards": power_cards,
+            },
+            {
+                "title": "Energy Control",
+                "path": "energy-control",
+                "icon": "mdi:solar-power-variant",
+                "cards": energy_cards,
+            },
+            {
+                "title": "Installatore",
+                "path": "installatore",
+                "icon": "mdi:tools",
+                "cards": installer_cards,
+            },
+        ]
+    }
 
 
 async def async_create_dashboard(hass, entry) -> None:
