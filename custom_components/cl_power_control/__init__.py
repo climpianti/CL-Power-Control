@@ -6,9 +6,15 @@ import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import CoreState, HomeAssistant, ServiceCall, callback
 
-from .const import DOMAIN, PLATFORMS
+from .const import (
+    DOMAIN, PLATFORMS, CONF_LOADS,
+    LOAD_NAME, LOAD_SWITCH, LOAD_POWER_SENSOR, LOAD_PRIORITY,
+    LOAD_ENABLED, LOAD_AUTO_RESTART, LOAD_NEVER_SHED,
+    LOAD_MIN_ACTIVE_W, LOAD_ESTIMATED_W, LOAD_ID,
+)
 from .coordinator import CLPowerControlCoordinator
 from .dashboard import async_create_dashboard
+from .model import new_load, normalize_priorities
 
 SERVICE_ADD_LOAD = "add_load"
 SERVICE_REMOVE_LOAD = "remove_load"
@@ -31,13 +37,30 @@ async def _async_register_services(hass: HomeAssistant) -> None:
             raise ValueError("CL Power Control configuration entry not found")
         if not coordinator.installer_unlocked:
             raise ValueError("Installer mode is locked")
-        created = await coordinator.async_add_load(
-            str(call.data["name"]),
-            str(call.data["command_entity"]),
-            str(call.data.get("power_sensor", "")),
+
+        name = str(call.data["name"]).strip()[:64]
+        command_entity = str(call.data["command_entity"]).strip()
+        power_sensor = str(call.data.get("power_sensor", "")).strip()
+        if not name or not command_entity:
+            raise ValueError("Name and command entity are required")
+
+        loads = list(coordinator.entry.data.get(CONF_LOADS, []))
+        load = new_load({
+            LOAD_NAME: name,
+            LOAD_SWITCH: command_entity,
+            LOAD_POWER_SENSOR: power_sensor,
+            LOAD_PRIORITY: len(loads) + 1,
+            LOAD_ENABLED: True,
+            LOAD_AUTO_RESTART: True,
+            LOAD_NEVER_SHED: False,
+            LOAD_MIN_ACTIVE_W: 10,
+            LOAD_ESTIMATED_W: 0,
+        })
+        loads.append(load)
+        hass.config_entries.async_update_entry(
+            coordinator.entry,
+            data={**coordinator.entry.data, CONF_LOADS: normalize_priorities(loads)},
         )
-        if not created:
-            raise ValueError("Unable to add load")
 
     async def _remove_load(call: ServiceCall) -> None:
         coordinator = _coordinator_for_call(hass, call)
@@ -45,8 +68,16 @@ async def _async_register_services(hass: HomeAssistant) -> None:
             raise ValueError("CL Power Control configuration entry not found")
         if not coordinator.installer_unlocked:
             raise ValueError("Installer mode is locked")
-        if not await coordinator.async_remove_load(str(call.data["load_id"])):
-            raise ValueError("Unable to remove load")
+
+        load_id = str(call.data["load_id"]).strip()
+        loads = list(coordinator.entry.data.get(CONF_LOADS, []))
+        if not any(item.get(LOAD_ID) == load_id for item in loads):
+            raise ValueError("Load not found")
+        loads = [item for item in loads if item.get(LOAD_ID) != load_id]
+        hass.config_entries.async_update_entry(
+            coordinator.entry,
+            data={**coordinator.entry.data, CONF_LOADS: normalize_priorities(loads)},
+        )
 
     hass.services.async_register(
         DOMAIN,
