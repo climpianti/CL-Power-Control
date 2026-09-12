@@ -21,23 +21,36 @@ _LOGGER = logging.getLogger(__name__)
 DASHBOARD_PATH = "cl-power-control"
 
 
-async def async_install_logo(hass) -> None:
-    """Expose packaged logos through /local without manual copying."""
-    brand_dir = Path(__file__).parent / "brand"
+async def async_install_assets(hass) -> None:
+    """Expose packaged dashboard assets through /local."""
+    component_dir = Path(__file__).parent
+    brand_dir = component_dir / "brand"
     source = brand_dir / "logo.png"
     header_source = brand_dir / "header_logo.png"
+    frontend_source = component_dir / "frontend.js"
     target_dir = Path(hass.config.path("www", "cl_power_control"))
     target = target_dir / "logo.png"
     header_target = target_dir / "header_logo.png"
+    frontend_target = target_dir / "frontend.js"
 
     def _copy():
         if not source.exists():
             raise FileNotFoundError(f"CL Power Control logo not found: {source}")
+        if not frontend_source.exists():
+            raise FileNotFoundError(f"CL Power Control frontend not found: {frontend_source}")
         target_dir.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source, target)
         shutil.copyfile(header_source if header_source.exists() else source, header_target)
+        shutil.copyfile(frontend_source, frontend_target)
 
     await hass.async_add_executor_job(_copy)
+
+
+def async_register_frontend_resource(hass) -> None:
+    """Load the CL Power Control custom card as a frontend module."""
+    frontend.add_extra_js_url(
+        hass, "/local/cl_power_control/frontend.js?v=0.3.0-beta.6"
+    )
 
 
 def _dashboards(hass):
@@ -225,7 +238,20 @@ def _build(hass, entry):
                 "card": {"type": "entities", "title": "🔓 Modalità installatore attiva", "show_header_toggle": False, "entities": unlocked_rows},
             })
 
-        installer_cards = [_installer_global_card(hass, entry), *installer_load_cards]
+        management_card = {
+            "type": "custom:cl-power-control-load-manager-card",
+            "entry_id": entry.entry_id,
+            "loads": [
+                {
+                    "id": load.get(LOAD_ID, ""),
+                    "name": load.get(LOAD_NAME, "Carico"),
+                    "priority": load.get("priority", 999),
+                }
+                for load in loads
+            ],
+        }
+
+        installer_cards = [management_card, _installer_global_card(hass, entry), *installer_load_cards]
         cards.append({
             "type": "conditional",
             "conditions": [{"entity": installer_mode, "state": "on"}],
@@ -251,9 +277,10 @@ def _build(hass, entry):
 async def async_create_dashboard(hass, entry) -> None:
     """Create or refresh a sidebar dashboard using HA storage mode."""
     try:
-        await async_install_logo(hass)
+        await async_install_assets(hass)
+        async_register_frontend_resource(hass)
     except Exception as err:  # noqa: BLE001
-        _LOGGER.exception("Unable to install CL Power Control dashboard logo: %s", err)
+        _LOGGER.exception("Unable to install CL Power Control dashboard assets: %s", err)
         return
 
     dashboards = _dashboards(hass)
