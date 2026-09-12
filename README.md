@@ -1,32 +1,43 @@
 # CL Power Control
 
-## Gestione intelligente dei carichi elettrici per Home Assistant
+Integrazione Home Assistant per la gestione intelligente e prioritaria dei carichi elettrici.
 
-CL Power Control è una custom integration per Home Assistant dedicata al controllo automatico e prioritario dei carichi elettrici.
+## Versione di test 0.3.0-beta.6
 
-**Versione corrente: 0.2.6**
+Questa beta è la build validata localmente prima della pubblicazione stabile 0.3.0.
 
 ### Funzioni principali
 
-- Dashboard automatica CL Power Control con branding CL Impianti.
-- Potenza attuale, disponibile e sospesa.
-- Grafico della potenza e storico dei distacchi.
-- Controllo automatico dei carichi e gestione delle priorità.
-- Priorità 1 = carico più importante: ultimo a essere distaccato e primo a essere riattivato.
-- Accesso installatore temporaneo protetto da PIN salvato in forma hash.
-- Configurazione guidata tramite config flow di Home Assistant.
+- Gestione automatica dei carichi in base alla potenza assorbita.
+- Priorità configurabili: **Priorità 1 = carico più importante**, ultimo a essere distaccato e primo a essere riattivato.
+- Dashboard dedicata CL Power Control.
+- Modalità installatore protetta da PIN con sessione temporanea di 15 minuti.
+- Configurazione avanzata dei carichi direttamente dalla dashboard.
+- Selettori Home Assistant con ricerca per entità comando e sensore di potenza.
+- Aggiunta e rimozione dei carichi dalla dashboard installatore.
+- Test ON/OFF del singolo carico.
+- Gestione per carico di auto-riattivazione, mai distaccabile, potenza minima attiva e potenza stimata.
+- Soglie e temporizzazioni generali modificabili dalla dashboard installatore.
+- Logo dashboard CL + telecamera a colori su sfondo trasparente.
 
-## Installazione tramite HACS
+## Installazione con HACS
 
-1. Aprire **HACS**.
-2. Selezionare **Custom repositories**.
-3. Inserire `https://github.com/climpianti/CL-Power-Control`.
-4. Selezionare **Category: Integration**.
-5. Fare clic su **Download**.
-6. Riavviare Home Assistant.
-7. Aprire **Impostazioni → Dispositivi e servizi → Aggiungi integrazione**.
-8. Cercare **CL Power Control** e completare la configurazione.
+Aggiungere come repository personalizzato:
 
-## Installazione manuale
+`https://github.com/climpianti/CL-Power-Control`
 
-Copiare la cartella `custom_components/cl_power_control` nella directory `/config/custom_components/` di Home Assistant e riavviare completamente Home Assistant.
+Categoria: **Integration**.
+
+Per testare una beta, abilitare le versioni prerelease in HACS e selezionare la release desiderata.
+
+## Aggiornamento manuale
+
+Sostituire la cartella:
+
+`/config/custom_components/cl_power_control/`
+
+con quella contenuta nel pacchetto e riavviare completamente Home Assistant.
+
+## Nota
+
+La serie 0.3.0-beta è destinata ai test. Per installazioni cliente definitive usare una release stabile.
