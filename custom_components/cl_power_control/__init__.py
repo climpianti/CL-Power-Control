@@ -1,12 +1,74 @@
 """CL Power Control integration."""
 from __future__ import annotations
 
+import voluptuous as vol
+
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import CoreState, HomeAssistant, callback
+from homeassistant.core import CoreState, HomeAssistant, ServiceCall, callback
 
 from .const import DOMAIN, PLATFORMS
 from .coordinator import CLPowerControlCoordinator
 from .dashboard import async_create_dashboard
+
+SERVICE_ADD_LOAD = "add_load"
+SERVICE_REMOVE_LOAD = "remove_load"
+
+
+def _coordinator_for_call(hass: HomeAssistant, call: ServiceCall) -> CLPowerControlCoordinator | None:
+    entry_id = str(call.data.get("entry_id", ""))
+    coordinator = hass.data.get(DOMAIN, {}).get(entry_id)
+    return coordinator if isinstance(coordinator, CLPowerControlCoordinator) else None
+
+
+async def _async_register_services(hass: HomeAssistant) -> None:
+    """Register backend actions used by the custom installer dashboard card."""
+    if hass.data.setdefault(DOMAIN, {}).get("_services_registered"):
+        return
+
+    async def _add_load(call: ServiceCall) -> None:
+        coordinator = _coordinator_for_call(hass, call)
+        if coordinator is None:
+            raise ValueError("CL Power Control configuration entry not found")
+        if not coordinator.installer_unlocked:
+            raise ValueError("Installer mode is locked")
+        created = await coordinator.async_add_load(
+            str(call.data["name"]),
+            str(call.data["command_entity"]),
+            str(call.data.get("power_sensor", "")),
+        )
+        if not created:
+            raise ValueError("Unable to add load")
+
+    async def _remove_load(call: ServiceCall) -> None:
+        coordinator = _coordinator_for_call(hass, call)
+        if coordinator is None:
+            raise ValueError("CL Power Control configuration entry not found")
+        if not coordinator.installer_unlocked:
+            raise ValueError("Installer mode is locked")
+        if not await coordinator.async_remove_load(str(call.data["load_id"])):
+            raise ValueError("Unable to remove load")
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_ADD_LOAD,
+        _add_load,
+        schema=vol.Schema({
+            vol.Required("entry_id"): str,
+            vol.Required("name"): str,
+            vol.Required("command_entity"): str,
+            vol.Optional("power_sensor", default=""): str,
+        }),
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_REMOVE_LOAD,
+        _remove_load,
+        schema=vol.Schema({
+            vol.Required("entry_id"): str,
+            vol.Required("load_id"): str,
+        }),
+    )
+    hass.data[DOMAIN]["_services_registered"] = True
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -42,6 +104,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
+    await _async_register_services(hass)
     coordinator = CLPowerControlCoordinator(hass, entry)
     await coordinator.async_config_entry_first_refresh()
     hass.data[DOMAIN][entry.entry_id] = coordinator
