@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
-from homeassistant.const import UnitOfPower
+from homeassistant.const import PERCENTAGE, UnitOfPower
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -32,6 +32,17 @@ async def async_setup_entry(hass, entry, async_add_entities):
         CLMetricSensor(coord, entry, "suspended_count", "Carichi sospesi", "suspended_count", None, "mdi:power-plug-off"),
         CLMetricSensor(coord, entry, "last_event", "Ultimo evento", "last_event", None, "mdi:history"),
         CLMetricSensor(coord, entry, "installer_access_status", "Stato accesso installatore", "installer_access_status", None, "mdi:shield-lock"),
+        CLMetricSensor(coord, entry, "energy_status", "Energy Control Stato", "energy_status", None, "mdi:solar-power-variant"),
+        CLMetricSensor(coord, entry, "energy_grid_power", "Energy Rete", "energy_grid_power", UnitOfPower.WATT, "mdi:transmission-tower"),
+        CLMetricSensor(coord, entry, "energy_pv_power", "Energy Fotovoltaico", "energy_pv_power", UnitOfPower.WATT, "mdi:solar-power"),
+        CLMetricSensor(coord, entry, "energy_home_power", "Energy Consumo casa", "energy_home_power", UnitOfPower.WATT, "mdi:home-lightning-bolt"),
+        CLMetricSensor(coord, entry, "energy_import_power", "Energy Prelievo rete", "energy_import_power", UnitOfPower.WATT, "mdi:transmission-tower-import"),
+        CLMetricSensor(coord, entry, "energy_export_power", "Energy Immissione rete", "energy_export_power", UnitOfPower.WATT, "mdi:transmission-tower-export"),
+        CLMetricSensor(coord, entry, "energy_surplus_power", "Energy Surplus", "energy_surplus_power", UnitOfPower.WATT, "mdi:solar-power-variant-outline"),
+        CLMetricSensor(coord, entry, "energy_battery_power", "Energy Batteria", "energy_battery_power", UnitOfPower.WATT, "mdi:battery-charging"),
+        CLMetricSensor(coord, entry, "energy_battery_charge_power", "Energy Carica batteria", "energy_battery_charge_power", UnitOfPower.WATT, "mdi:battery-arrow-up"),
+        CLMetricSensor(coord, entry, "energy_battery_discharge_power", "Energy Scarica batteria", "energy_battery_discharge_power", UnitOfPower.WATT, "mdi:battery-arrow-down"),
+        CLMetricSensor(coord, entry, "energy_battery_soc", "Energy SOC batteria", "energy_battery_soc", PERCENTAGE, "mdi:battery-high"),
     ]
     for load in entry.data.get("loads", []):
         entities.append(CLLoadPowerSensor(coord, entry, load[LOAD_ID]))
@@ -52,6 +63,9 @@ class CLMetricSensor(CoordinatorEntity, SensorEntity):
         if unit == UnitOfPower.WATT:
             self._attr_device_class = SensorDeviceClass.POWER
             self._attr_state_class = SensorStateClass.MEASUREMENT
+        elif unit == PERCENTAGE:
+            self._attr_device_class = SensorDeviceClass.BATTERY
+            self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_device_info = _device(entry)
 
     @property
@@ -60,15 +74,22 @@ class CLMetricSensor(CoordinatorEntity, SensorEntity):
 
     @property
     def extra_state_attributes(self):
-        if self._data_key != "current_power" or not self.coordinator.data:
+        if not self.coordinator.data:
             return {}
-        return {
-            "source": self.coordinator.data.get("source"),
-            "limit_w": self.coordinator.data.get("limit_w"),
-            "warning_w": self.coordinator.data.get("warning_w"),
-            "restore_w": self.coordinator.data.get("restore_w"),
-            "last_event": self.coordinator.data.get("last_event"),
-        }
+        if self._data_key == "current_power":
+            return {
+                "source": self.coordinator.data.get("source"),
+                "limit_w": self.coordinator.data.get("limit_w"),
+                "warning_w": self.coordinator.data.get("warning_w"),
+                "restore_w": self.coordinator.data.get("restore_w"),
+                "last_event": self.coordinator.data.get("last_event"),
+            }
+        if self._data_key.startswith("energy_"):
+            return {
+                "energy_control_enabled": self.coordinator.data.get("energy_enabled"),
+                "energy_control_status": self.coordinator.data.get("energy_status"),
+            }
+        return {}
 
 
 class CLLoadPowerSensor(CoordinatorEntity, SensorEntity):
