@@ -5,7 +5,7 @@ from homeassistant.const import Platform
 
 DOMAIN = "cl_power_control"
 NAME = "CL Power Control"
-VERSION = "0.4.0-dev.1"
+VERSION = "0.4.0-dev.2"
 MANUFACTURER = "CL Impianti"
 
 CONF_NAME = "name"
@@ -34,6 +34,7 @@ CONF_BATTERY_POWER_SENSOR = "battery_power_sensor"
 CONF_BATTERY_SOC_SENSOR = "battery_soc_sensor"
 CONF_GRID_POWER_INVERT = "grid_power_invert"
 CONF_BATTERY_POWER_INVERT = "battery_power_invert"
+CONF_FLEX_GRID_ALLOWANCE_W = "flex_grid_allowance_w"
 
 LOAD_ID = "id"
 LOAD_NAME = "name"
@@ -57,6 +58,7 @@ DEFAULT_WAIT_BETWEEN_RESTORES_SEC = 30
 DEFAULT_ENERGY_ENABLED = False
 DEFAULT_GRID_POWER_INVERT = False
 DEFAULT_BATTERY_POWER_INVERT = False
+DEFAULT_FLEX_GRID_ALLOWANCE_W = 0
 
 INSTALLER_SESSION_MINUTES = 15
 UNCONFIGURED_OPTION = "Non configurato"
