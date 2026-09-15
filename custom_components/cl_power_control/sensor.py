@@ -6,7 +6,10 @@ from homeassistant.const import PERCENTAGE, UnitOfPower
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, MANUFACTURER, NAME, VERSION, LOAD_ID, LOAD_NAME
+from .const import (
+    DOMAIN, MANUFACTURER, NAME, VERSION, LOAD_ID, LOAD_NAME,
+    CONF_FLEX_GRID_ALLOWANCE_W, DEFAULT_FLEX_GRID_ALLOWANCE_W,
+)
 
 
 def _device(entry):
@@ -38,11 +41,13 @@ async def async_setup_entry(hass, entry, async_add_entities):
         CLMetricSensor(coord, entry, "energy_home_power", "Energy Consumo casa", "energy_home_power", UnitOfPower.WATT, "mdi:home-lightning-bolt"),
         CLMetricSensor(coord, entry, "energy_import_power", "Energy Prelievo rete", "energy_import_power", UnitOfPower.WATT, "mdi:transmission-tower-import"),
         CLMetricSensor(coord, entry, "energy_export_power", "Energy Immissione rete", "energy_export_power", UnitOfPower.WATT, "mdi:transmission-tower-export"),
-        CLMetricSensor(coord, entry, "energy_surplus_power", "Energy Surplus", "energy_surplus_power", UnitOfPower.WATT, "mdi:solar-power-variant-outline"),
+        CLMetricSensor(coord, entry, "energy_surplus_power", "Energy Surplus FV disponibile", "energy_surplus_power", UnitOfPower.WATT, "mdi:solar-power-variant-outline"),
         CLMetricSensor(coord, entry, "energy_battery_power", "Energy Batteria", "energy_battery_power", UnitOfPower.WATT, "mdi:battery-charging"),
         CLMetricSensor(coord, entry, "energy_battery_charge_power", "Energy Carica batteria", "energy_battery_charge_power", UnitOfPower.WATT, "mdi:battery-arrow-up"),
         CLMetricSensor(coord, entry, "energy_battery_discharge_power", "Energy Scarica batteria", "energy_battery_discharge_power", UnitOfPower.WATT, "mdi:battery-arrow-down"),
         CLMetricSensor(coord, entry, "energy_battery_soc", "Energy SOC batteria", "energy_battery_soc", PERCENTAGE, "mdi:battery-high"),
+        CLEnergyDerivedSensor(coord, entry, "energy_grid_margin", "Energy Margine contatore", "grid_margin", "mdi:meter-electric-outline"),
+        CLEnergyDerivedSensor(coord, entry, "energy_flexible_available", "Energy Disponibile carichi flessibili", "flexible_available", "mdi:power-plug-battery-outline"),
     ]
     for load in entry.data.get("loads", []):
         entities.append(CLLoadPowerSensor(coord, entry, load[LOAD_ID]))
@@ -90,6 +95,55 @@ class CLMetricSensor(CoordinatorEntity, SensorEntity):
                 "energy_control_status": self.coordinator.data.get("energy_status"),
             }
         return {}
+
+
+class CLEnergyDerivedSensor(CoordinatorEntity, SensorEntity):
+    """Derived availability values that keep Energy Control separate from load control."""
+
+    _attr_has_entity_name = True
+    _attr_device_class = SensorDeviceClass.POWER
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = UnitOfPower.WATT
+
+    def __init__(self, coordinator, entry, key, name, metric, icon):
+        super().__init__(coordinator)
+        self._entry = entry
+        self._metric = metric
+        self._attr_unique_id = f"{entry.entry_id}_{key}"
+        self._attr_name = name
+        self._attr_icon = icon
+        self._attr_device_info = _device(entry)
+
+    def _values(self):
+        data = self.coordinator.data or {}
+        if not data.get("energy_enabled") or data.get("energy_status") != "Attivo":
+            return None, None, None
+        grid = data.get("energy_grid_power")
+        surplus = data.get("energy_surplus_power")
+        limit_w = data.get("limit_w")
+        if grid is None or limit_w is None:
+            return None, None, None
+        grid_margin = max(0.0, float(limit_w) - float(grid))
+        allowance = max(0.0, float(self.coordinator.conf(CONF_FLEX_GRID_ALLOWANCE_W, DEFAULT_FLEX_GRID_ALLOWANCE_W) or 0))
+        flexible = min(grid_margin, max(0.0, float(surplus or 0)) + allowance)
+        return grid_margin, flexible, allowance
+
+    @property
+    def native_value(self):
+        grid_margin, flexible, _ = self._values()
+        value = grid_margin if self._metric == "grid_margin" else flexible
+        return round(value, 1) if value is not None else None
+
+    @property
+    def extra_state_attributes(self):
+        grid_margin, flexible, allowance = self._values()
+        return {
+            "energy_control_enabled": (self.coordinator.data or {}).get("energy_enabled"),
+            "grid_margin_w": round(grid_margin, 1) if grid_margin is not None else None,
+            "surplus_w": (self.coordinator.data or {}).get("energy_surplus_power"),
+            "grid_allowance_w": round(allowance, 1) if allowance is not None else None,
+            "flexible_available_w": round(flexible, 1) if flexible is not None else None,
+        }
 
 
 class CLLoadPowerSensor(CoordinatorEntity, SensorEntity):
