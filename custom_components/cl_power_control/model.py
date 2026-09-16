@@ -6,8 +6,15 @@ from uuid import uuid4
 from .const import (
     LOAD_ID, LOAD_NAME, LOAD_SWITCH, LOAD_POWER_SENSOR, LOAD_PRIORITY,
     LOAD_ENABLED, LOAD_AUTO_RESTART, LOAD_NEVER_SHED, LOAD_MIN_ACTIVE_W,
-    LOAD_ESTIMATED_W,
+    LOAD_ESTIMATED_W, LOAD_ENERGY_MODE, DEFAULT_LOAD_ENERGY_MODE,
+    ENERGY_MODE_LABELS,
 )
+
+
+def _energy_mode(value) -> str:
+    """Return a valid energy mode, defaulting legacy loads to Normal."""
+    value = str(value or DEFAULT_LOAD_ENERGY_MODE)
+    return value if value in ENERGY_MODE_LABELS else DEFAULT_LOAD_ENERGY_MODE
 
 
 def new_load(data: dict) -> dict:
@@ -23,13 +30,21 @@ def new_load(data: dict) -> dict:
         LOAD_NEVER_SHED: bool(data.get(LOAD_NEVER_SHED, False)),
         LOAD_MIN_ACTIVE_W: float(data.get(LOAD_MIN_ACTIVE_W, 10)),
         LOAD_ESTIMATED_W: float(data.get(LOAD_ESTIMATED_W, 0)),
+        LOAD_ENERGY_MODE: _energy_mode(data.get(LOAD_ENERGY_MODE)),
     }
 
 
 def normalize_priorities(loads: list[dict]) -> list[dict]:
-    """Return loads sorted and numbered 1..N without duplicate priorities."""
+    """Return normalized loads sorted and numbered 1..N.
+
+    Loads created before Energy Control are transparently treated as Normal.
+    """
+    normalized = [
+        {**item, LOAD_ENERGY_MODE: _energy_mode(item.get(LOAD_ENERGY_MODE))}
+        for item in loads
+    ]
     ordered = sorted(
-        loads,
+        normalized,
         key=lambda item: (int(item.get(LOAD_PRIORITY, 999)), item.get(LOAD_NAME, "")),
     )
     return [{**item, LOAD_PRIORITY: index + 1} for index, item in enumerate(ordered)]
