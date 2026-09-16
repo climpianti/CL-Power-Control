@@ -42,6 +42,10 @@ class CLPrealertManager:
             raw = [raw]
         return [str(item) for item in (raw or []) if str(item).startswith("notify.mobile_app_")]
 
+    def _dashboard_url(self) -> str:
+        """Relative URL opened by the Home Assistant companion app."""
+        return "/cl-power-control/power-control"
+
     def _handle_update(self) -> None:
         data = self.coordinator.data or {}
         current = data.get("current_power")
@@ -86,7 +90,20 @@ class CLPrealertManager:
             "notification_id": f"{DOMAIN}_{self.entry.entry_id}_prealert",
         }, blocking=False)
 
-        mobile_data = {"tag": f"{DOMAIN}_{self.entry.entry_id}_prealert", "group": DOMAIN}
+        dashboard_url = self._dashboard_url()
+        mobile_data = {
+            "tag": f"{DOMAIN}_{self.entry.entry_id}_prealert",
+            "group": DOMAIN,
+            "clickAction": dashboard_url,
+            "url": dashboard_url,
+            "actions": [
+                {
+                    "action": "URI",
+                    "title": "Apri Power Control",
+                    "uri": dashboard_url,
+                }
+            ],
+        }
         for target in self._targets():
             domain, service = target.split(".", 1)
             if self.hass.services.has_service(domain, service):
@@ -99,6 +116,7 @@ class CLPrealertManager:
             "current_power_w": round(current, 1), "threshold_w": round(threshold, 1),
             "delay_sec": delay, "title": title, "message": message,
             "notification_targets": self._targets(),
+            "dashboard_url": dashboard_url,
         })
 
     async def _dismiss(self) -> None:
