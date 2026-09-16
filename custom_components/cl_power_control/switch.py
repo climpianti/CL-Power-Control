@@ -7,6 +7,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
     DOMAIN, NAME, VERSION, MANUFACTURER, CONF_ENABLED, CONF_LOADS,
+    CONF_PREALERT_ENABLED, DEFAULT_PREALERT_ENABLED,
     LOAD_ID, LOAD_NAME, LOAD_ENABLED, LOAD_AUTO_RESTART, LOAD_NEVER_SHED,
 )
 
@@ -23,7 +24,7 @@ def _device(entry) -> DeviceInfo:
 
 async def async_setup_entry(hass, entry, async_add_entities):
     coordinator = hass.data[DOMAIN][entry.entry_id]
-    entities = [CLPowerControlSwitch(entry)]
+    entities = [CLPowerControlSwitch(entry), CLPrealertSwitch(entry)]
     for load in entry.data.get(CONF_LOADS, []):
         load_id = load[LOAD_ID]
         entities.extend([
@@ -57,6 +58,37 @@ class CLPowerControlSwitch(SwitchEntity):
     async def async_turn_off(self, **kwargs):
         self.hass.config_entries.async_update_entry(
             self._entry, options={**self._entry.options, CONF_ENABLED: False}
+        )
+        self.async_write_ha_state()
+
+
+class CLPrealertSwitch(SwitchEntity):
+    """Customer-facing opt-in for pre-intervention warnings."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Avviso prima del distacco"
+    _attr_icon = "mdi:bell-alert-outline"
+
+    def __init__(self, entry):
+        self._entry = entry
+        self._attr_unique_id = f"{entry.entry_id}_prealert_enabled"
+        self._attr_device_info = _device(entry)
+
+    @property
+    def is_on(self):
+        return bool(self._entry.options.get(CONF_PREALERT_ENABLED, DEFAULT_PREALERT_ENABLED))
+
+    async def async_turn_on(self, **kwargs):
+        self.hass.config_entries.async_update_entry(
+            self._entry,
+            options={**self._entry.options, CONF_PREALERT_ENABLED: True},
+        )
+        self.async_write_ha_state()
+
+    async def async_turn_off(self, **kwargs):
+        self.hass.config_entries.async_update_entry(
+            self._entry,
+            options={**self._entry.options, CONF_PREALERT_ENABLED: False},
         )
         self.async_write_ha_state()
 
