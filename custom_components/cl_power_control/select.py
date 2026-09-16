@@ -8,6 +8,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import (
     DOMAIN, MANUFACTURER, NAME, VERSION, CONF_LOADS,
     LOAD_ID, LOAD_NAME, LOAD_PRIORITY, LOAD_SWITCH, LOAD_POWER_SENSOR,
+    LOAD_ENERGY_MODE, DEFAULT_LOAD_ENERGY_MODE, ENERGY_MODE_LABELS,
     UNCONFIGURED_OPTION,
 )
 
@@ -31,6 +32,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
         load_id = load[LOAD_ID]
         entities.extend([
             CLLoadPrioritySelect(coord, entry, load_id),
+            CLLoadEnergyModeSelect(coord, entry, load_id),
             CLLoadCommandEntitySelect(coord, entry, load_id),
             CLLoadPowerSensorSelect(coord, entry, load_id),
         ])
@@ -72,6 +74,35 @@ class CLLoadPrioritySelect(_CLLoadSelectBase):
         return _priority_label(int(load.get(LOAD_PRIORITY, 1)), count)
     async def async_select_option(self, option: str) -> None:
         await self.coordinator.async_set_priority(self._load_id, int(option.split(" ", 1)[0]))
+
+
+class CLLoadEnergyModeSelect(_CLLoadSelectBase):
+    """Installer-only energy classification, independent from priority."""
+    _attr_icon = "mdi:leaf-circle-outline"
+    def __init__(self, coordinator, entry, load_id):
+        super().__init__(coordinator, entry, load_id)
+        self._attr_unique_id = f"{entry.entry_id}_load_{load_id}_energy_mode"
+    @property
+    def name(self):
+        load = self._load()
+        return f"{load.get(LOAD_NAME, 'Carico')} Modalità energia" if load else "Modalità energia"
+    @property
+    def available(self) -> bool:
+        return self.coordinator.installer_unlocked
+    @property
+    def options(self):
+        return list(ENERGY_MODE_LABELS.values())
+    @property
+    def current_option(self):
+        load = self._load()
+        mode = load.get(LOAD_ENERGY_MODE, DEFAULT_LOAD_ENERGY_MODE) if load else DEFAULT_LOAD_ENERGY_MODE
+        return ENERGY_MODE_LABELS.get(mode, ENERGY_MODE_LABELS[DEFAULT_LOAD_ENERGY_MODE])
+    async def async_select_option(self, option: str) -> None:
+        if not self.coordinator.installer_unlocked:
+            return
+        reverse = {label: mode for mode, label in ENERGY_MODE_LABELS.items()}
+        mode = reverse.get(option, DEFAULT_LOAD_ENERGY_MODE)
+        await self.coordinator.async_update_load_field(self._load_id, LOAD_ENERGY_MODE, mode)
 
 
 class CLLoadCommandEntitySelect(_CLLoadSelectBase):
