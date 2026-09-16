@@ -57,7 +57,7 @@ def _timing_schema(defaults: dict) -> vol.Schema:
     })
 
 
-def _load_schema(defaults: dict | None = None) -> vol.Schema:
+def _load_base_schema(defaults: dict | None = None) -> vol.Schema:
     defaults = defaults or {}
     energy_options = [{"value": mode, "label": label} for mode, label in ENERGY_MODE_LABELS.items()]
     action_options = [{"value": action, "label": label} for action, label in ENERGY_ACTION_LABELS.items()]
@@ -68,14 +68,30 @@ def _load_schema(defaults: dict | None = None) -> vol.Schema:
         vol.Required(LOAD_PRIORITY, default=defaults.get(LOAD_PRIORITY, 1)): NumberSelector(NumberSelectorConfig(min=1, max=100, step=1, mode=NumberSelectorMode.BOX)),
         vol.Required(LOAD_ENERGY_MODE, default=defaults.get(LOAD_ENERGY_MODE, DEFAULT_LOAD_ENERGY_MODE)): SelectSelector(SelectSelectorConfig(options=energy_options, mode=SelectSelectorMode.DROPDOWN)),
         vol.Required(LOAD_ENERGY_ACTION, default=defaults.get(LOAD_ENERGY_ACTION, DEFAULT_LOAD_ENERGY_ACTION)): SelectSelector(SelectSelectorConfig(options=action_options, mode=SelectSelectorMode.DROPDOWN)),
-        vol.Required(LOAD_ENERGY_TARGET_TEMP, default=defaults.get(LOAD_ENERGY_TARGET_TEMP, DEFAULT_LOAD_ENERGY_TARGET_TEMP)): NumberSelector(NumberSelectorConfig(min=0, max=90, step=0.5, unit_of_measurement="°C", mode=NumberSelectorMode.BOX)),
-        vol.Optional(LOAD_ENERGY_AUX_ENTITY, description={"suggested_value": defaults.get(LOAD_ENERGY_AUX_ENTITY, "")}): EntitySelector(EntitySelectorConfig(domain=["switch", "light"])),
         vol.Required(LOAD_ENABLED, default=defaults.get(LOAD_ENABLED, True)): BooleanSelector(),
         vol.Required(LOAD_AUTO_RESTART, default=defaults.get(LOAD_AUTO_RESTART, True)): BooleanSelector(),
         vol.Required(LOAD_NEVER_SHED, default=defaults.get(LOAD_NEVER_SHED, False)): BooleanSelector(),
         vol.Required(LOAD_MIN_ACTIVE_W, default=defaults.get(LOAD_MIN_ACTIVE_W, 10)): NumberSelector(NumberSelectorConfig(min=0, max=5000, step=1, unit_of_measurement="W", mode=NumberSelectorMode.BOX)),
         vol.Required(LOAD_ESTIMATED_W, default=defaults.get(LOAD_ESTIMATED_W, 0)): NumberSelector(NumberSelectorConfig(min=0, max=100000, step=10, unit_of_measurement="W", mode=NumberSelectorMode.BOX)),
     })
+
+
+def _energy_detail_schema(action: str, defaults: dict) -> vol.Schema | None:
+    if action == ENERGY_ACTION_CLIMATE_COMFORT:
+        value = float(defaults.get(LOAD_ENERGY_TARGET_TEMP, 0) or DEFAULT_CLIMATE_COMFORT_TEMP)
+        return vol.Schema({
+            vol.Required(LOAD_ENERGY_TARGET_TEMP, default=value): NumberSelector(NumberSelectorConfig(min=16, max=30, step=0.5, unit_of_measurement="°C", mode=NumberSelectorMode.BOX)),
+        })
+    if action == ENERGY_ACTION_TEMPERATURE_BOOST:
+        value = float(defaults.get(LOAD_ENERGY_TARGET_TEMP, 0) or DEFAULT_TEMPERATURE_BOOST_TEMP)
+        return vol.Schema({
+            vol.Required(LOAD_ENERGY_TARGET_TEMP, default=value): NumberSelector(NumberSelectorConfig(min=20, max=90, step=0.5, unit_of_measurement="°C", mode=NumberSelectorMode.BOX)),
+        })
+    if action == ENERGY_ACTION_AUX_HEATER:
+        return vol.Schema({
+            vol.Optional(LOAD_ENERGY_AUX_ENTITY, description={"suggested_value": defaults.get(LOAD_ENERGY_AUX_ENTITY, "")}): EntitySelector(EntitySelectorConfig(domain=["switch", "light"])),
+        })
+    return None
 
 
 class CLPowerControlConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -86,21 +102,12 @@ class CLPowerControlConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             pin = user_input.pop("installer_pin")
             confirm = user_input.pop("installer_pin_confirm")
-            if len(pin) < 4 or not pin.isdigit():
-                errors["installer_pin"] = "pin_format"
-            elif pin != confirm:
-                errors["installer_pin_confirm"] = "pin_mismatch"
+            if len(pin) < 4 or not pin.isdigit(): errors["installer_pin"] = "pin_format"
+            elif pin != confirm: errors["installer_pin_confirm"] = "pin_mismatch"
             else:
                 salt, digest = create_pin_hash(pin)
                 data = {CONF_NAME: user_input[CONF_NAME], CONF_INSTALLER_PIN_SALT: salt, CONF_INSTALLER_PIN_HASH: digest, CONF_LOADS: []}
-                options = {
-                    CONF_ENABLED: True, CONF_LIMIT_W: DEFAULT_LIMIT_W, CONF_WARNING_W: DEFAULT_WARNING_W,
-                    CONF_RESTORE_W: DEFAULT_RESTORE_W, CONF_DELAY_IMMEDIATE_SEC: DEFAULT_DELAY_IMMEDIATE_SEC,
-                    CONF_DELAY_WARNING_SEC: DEFAULT_DELAY_WARNING_SEC, CONF_WAIT_BETWEEN_SHEDS_SEC: DEFAULT_WAIT_BETWEEN_SHEDS_SEC,
-                    CONF_WAIT_BEFORE_RESTORE_SEC: DEFAULT_WAIT_BEFORE_RESTORE_SEC, CONF_WAIT_BETWEEN_RESTORES_SEC: DEFAULT_WAIT_BETWEEN_RESTORES_SEC,
-                    CONF_ENERGY_ENABLED: DEFAULT_ENERGY_ENABLED, CONF_PREALERT_ENABLED: DEFAULT_PREALERT_ENABLED,
-                    CONF_NOTIFICATION_TARGETS: DEFAULT_NOTIFICATION_TARGETS,
-                }
+                options = {CONF_ENABLED: True, CONF_LIMIT_W: DEFAULT_LIMIT_W, CONF_WARNING_W: DEFAULT_WARNING_W, CONF_RESTORE_W: DEFAULT_RESTORE_W, CONF_DELAY_IMMEDIATE_SEC: DEFAULT_DELAY_IMMEDIATE_SEC, CONF_DELAY_WARNING_SEC: DEFAULT_DELAY_WARNING_SEC, CONF_WAIT_BETWEEN_SHEDS_SEC: DEFAULT_WAIT_BETWEEN_SHEDS_SEC, CONF_WAIT_BEFORE_RESTORE_SEC: DEFAULT_WAIT_BEFORE_RESTORE_SEC, CONF_WAIT_BETWEEN_RESTORES_SEC: DEFAULT_WAIT_BETWEEN_RESTORES_SEC, CONF_ENERGY_ENABLED: DEFAULT_ENERGY_ENABLED, CONF_PREALERT_ENABLED: DEFAULT_PREALERT_ENABLED, CONF_NOTIFICATION_TARGETS: DEFAULT_NOTIFICATION_TARGETS}
                 return self.async_create_entry(title=user_input[CONF_NAME], data=data, options=options)
         schema = vol.Schema({
             vol.Required(CONF_NAME, default=NAME): TextSelector(TextSelectorConfig(type=TextSelectorType.TEXT)),
@@ -111,8 +118,7 @@ class CLPowerControlConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     @staticmethod
     @callback
-    def async_get_options_flow(config_entry):
-        return CLPowerControlOptionsFlow(config_entry)
+    def async_get_options_flow(config_entry): return CLPowerControlOptionsFlow(config_entry)
 
 
 class CLPowerControlOptionsFlow(config_entries.OptionsFlow):
@@ -120,6 +126,8 @@ class CLPowerControlOptionsFlow(config_entries.OptionsFlow):
         self._data = {**config_entry.data, **config_entry.options}
         self._selected_load_id = None
         self._installer_unlocked = False
+        self._pending_load: dict | None = None
+        self._pending_edit = False
 
     def _shared_installer_unlocked(self):
         coordinator = self.hass.data.get(DOMAIN, {}).get(self.config_entry.entry_id)
@@ -129,23 +137,17 @@ class CLPowerControlOptionsFlow(config_entries.OptionsFlow):
         services = self.hass.services.async_services().get("notify", {})
         return {f"notify.{name}": name.replace("mobile_app_", "").replace("_", " ").title() for name in services if name.startswith("mobile_app_")}
 
-    async def async_step_init(self, user_input=None):
-        return self.async_show_menu(step_id="init", menu_options=["quick", "notifications", "loads", "installer_unlock", "installer_pin_reset"])
+    async def async_step_init(self, user_input=None): return self.async_show_menu(step_id="init", menu_options=["quick", "notifications", "loads", "installer_unlock", "installer_pin_reset"])
 
     async def async_step_quick(self, user_input=None):
-        if user_input is not None:
-            self._data.update(user_input)
-            return await self._save()
+        if user_input is not None: self._data.update(user_input); return await self._save()
         return self.async_show_form(step_id="quick", data_schema=_power_schema(self._data))
 
     async def async_step_notifications(self, user_input=None):
         choices = self._mobile_services()
-        if user_input is not None:
-            self._data[CONF_NOTIFICATION_TARGETS] = list(user_input.get(CONF_NOTIFICATION_TARGETS, []))
-            return await self._save()
+        if user_input is not None: self._data[CONF_NOTIFICATION_TARGETS] = list(user_input.get(CONF_NOTIFICATION_TARGETS, [])); return await self._save()
         current = [x for x in self._data.get(CONF_NOTIFICATION_TARGETS, []) if x in choices]
-        schema = vol.Schema({vol.Optional(CONF_NOTIFICATION_TARGETS, default=current): vol.All([vol.In(choices)])})
-        return self.async_show_form(step_id="notifications", data_schema=schema, description_placeholders={"devices": str(len(choices))})
+        return self.async_show_form(step_id="notifications", data_schema=vol.Schema({vol.Optional(CONF_NOTIFICATION_TARGETS, default=current): vol.All([vol.In(choices)])}), description_placeholders={"devices": str(len(choices))})
 
     async def async_step_loads(self, user_input=None):
         loads = sort_loads(list(self._data.get(CONF_LOADS, [])))
@@ -154,18 +156,40 @@ class CLPowerControlOptionsFlow(config_entries.OptionsFlow):
         options.append("init")
         return self.async_show_menu(step_id="loads", menu_options=options)
 
+    async def _continue_load(self, base: dict, editing: bool):
+        self._pending_load = base
+        self._pending_edit = editing
+        action = base.get(LOAD_ENERGY_ACTION, DEFAULT_LOAD_ENERGY_ACTION)
+        schema = _energy_detail_schema(action, base)
+        if schema is None:
+            base[LOAD_ENERGY_TARGET_TEMP] = 0.0
+            base[LOAD_ENERGY_AUX_ENTITY] = ""
+            return await self._commit_pending_load()
+        return self.async_show_form(step_id="load_energy_details", data_schema=schema)
+
+    async def _commit_pending_load(self):
+        if not self._pending_load: return await self.async_step_loads()
+        loads = list(self._data.get(CONF_LOADS, []))
+        if self._pending_edit:
+            current = next((x for x in loads if x.get(LOAD_ID) == self._selected_load_id), None)
+            if current:
+                updated = {**current, **self._pending_load, LOAD_ID: current[LOAD_ID]}
+                loads = [updated if x.get(LOAD_ID) == current[LOAD_ID] else x for x in loads]
+        else:
+            loads.append(new_load(self._pending_load))
+        self._data[CONF_LOADS] = sort_loads(loads)
+        self._pending_load = None
+        self._pending_edit = False
+        return await self._save()
+
     async def async_step_load_add(self, user_input=None):
-        if user_input is not None:
-            loads = list(self._data.get(CONF_LOADS, [])); loads.append(new_load(user_input)); self._data[CONF_LOADS] = sort_loads(loads)
-            return await self._save()
-        defaults = {LOAD_PRIORITY: len(self._data.get(CONF_LOADS, [])) + 1, LOAD_ENERGY_MODE: DEFAULT_LOAD_ENERGY_MODE, LOAD_ENERGY_ACTION: DEFAULT_LOAD_ENERGY_ACTION, LOAD_ENERGY_TARGET_TEMP: DEFAULT_LOAD_ENERGY_TARGET_TEMP}
-        return self.async_show_form(step_id="load_add", data_schema=_load_schema(defaults))
+        defaults = {LOAD_PRIORITY: len(self._data.get(CONF_LOADS, [])) + 1, LOAD_ENERGY_MODE: DEFAULT_LOAD_ENERGY_MODE, LOAD_ENERGY_ACTION: DEFAULT_LOAD_ENERGY_ACTION}
+        if user_input is not None: return await self._continue_load(dict(user_input), False)
+        return self.async_show_form(step_id="load_add", data_schema=_load_base_schema(defaults))
 
     async def async_step_load_select(self, user_input=None):
         loads = sort_loads(list(self._data.get(CONF_LOADS, [])))
-        if user_input is not None:
-            self._selected_load_id = user_input["load_id"]
-            return await self.async_step_load_edit()
+        if user_input is not None: self._selected_load_id = user_input["load_id"]; return await self.async_step_load_edit()
         choices = {i[LOAD_ID]: f"P{i.get(LOAD_PRIORITY, '?')} - {i.get(LOAD_NAME, 'Carico')}" for i in loads}
         return self.async_show_form(step_id="load_select", data_schema=vol.Schema({vol.Required("load_id"): vol.In(choices)}))
 
@@ -173,15 +197,25 @@ class CLPowerControlOptionsFlow(config_entries.OptionsFlow):
         loads = list(self._data.get(CONF_LOADS, [])); current = next((x for x in loads if x.get(LOAD_ID) == self._selected_load_id), None)
         if current is None: return await self.async_step_loads()
         if user_input is not None:
-            updated = {**current, **user_input, LOAD_ID: current[LOAD_ID]}
-            self._data[CONF_LOADS] = sort_loads([updated if x.get(LOAD_ID) == current[LOAD_ID] else x for x in loads])
-            return await self._save()
-        return self.async_show_form(step_id="load_edit", data_schema=_load_schema(current))
+            merged = {**current, **user_input}
+            return await self._continue_load(merged, True)
+        return self.async_show_form(step_id="load_edit", data_schema=_load_base_schema(current))
+
+    async def async_step_load_energy_details(self, user_input=None):
+        if not self._pending_load: return await self.async_step_loads()
+        action = self._pending_load.get(LOAD_ENERGY_ACTION, DEFAULT_LOAD_ENERGY_ACTION)
+        schema = _energy_detail_schema(action, self._pending_load)
+        if schema is None: return await self._commit_pending_load()
+        if user_input is not None:
+            self._pending_load.update(user_input)
+            if action in (ENERGY_ACTION_CLIMATE_COMFORT, ENERGY_ACTION_TEMPERATURE_BOOST): self._pending_load[LOAD_ENERGY_AUX_ENTITY] = ""
+            if action == ENERGY_ACTION_AUX_HEATER: self._pending_load[LOAD_ENERGY_TARGET_TEMP] = 0.0
+            return await self._commit_pending_load()
+        return self.async_show_form(step_id="load_energy_details", data_schema=schema)
 
     async def async_step_load_delete(self, user_input=None):
         loads = sort_loads(list(self._data.get(CONF_LOADS, []))); choices = {i[LOAD_ID]: f"P{i.get(LOAD_PRIORITY, '?')} - {i.get(LOAD_NAME, 'Carico')}" for i in loads}
-        if user_input is not None:
-            self._data[CONF_LOADS] = sort_loads([x for x in loads if x.get(LOAD_ID) != user_input["load_id"]]); return await self._save()
+        if user_input is not None: self._data[CONF_LOADS] = sort_loads([x for x in loads if x.get(LOAD_ID) != user_input["load_id"]]); return await self._save()
         return self.async_show_form(step_id="load_delete", data_schema=vol.Schema({vol.Required("load_id"): vol.In(choices)}))
 
     async def async_step_installer_pin_reset(self, user_input=None):
