@@ -82,9 +82,15 @@ class CLPowerControlCoordinator(DataUpdateCoordinator[dict]):
 
     async def async_update_load_field(self, load_id: str, field: str, value) -> None:
         if not self.installer_unlocked: return
-        allowed = {LOAD_SWITCH, LOAD_POWER_SENSOR, LOAD_ENABLED, LOAD_AUTO_RESTART, LOAD_NEVER_SHED, LOAD_MIN_ACTIVE_W, LOAD_ESTIMATED_W, LOAD_ENERGY_MODE}
+        allowed = {
+            LOAD_SWITCH, LOAD_POWER_SENSOR, LOAD_ENABLED, LOAD_AUTO_RESTART,
+            LOAD_NEVER_SHED, LOAD_MIN_ACTIVE_W, LOAD_ESTIMATED_W,
+            LOAD_ENERGY_MODE, LOAD_ENERGY_ACTION, LOAD_ENERGY_TARGET_TEMP,
+            LOAD_ENERGY_AUX_ENTITY,
+        }
         if field not in allowed: raise ValueError(f"Unsupported dashboard load field: {field}")
         if field == LOAD_ENERGY_MODE and value not in ENERGY_MODE_LABELS: value = DEFAULT_LOAD_ENERGY_MODE
+        if field == LOAD_ENERGY_ACTION and value not in ENERGY_ACTION_LABELS: value = DEFAULT_LOAD_ENERGY_ACTION
         loads = [{**item, field: value} if item.get(LOAD_ID) == load_id else item for item in self.entry.data.get(CONF_LOADS, [])]
         self.hass.config_entries.async_update_entry(self.entry, data={**self.entry.data, CONF_LOADS: normalize_priorities(loads)})
         await self.async_request_refresh()
