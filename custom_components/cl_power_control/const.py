@@ -5,7 +5,7 @@ from homeassistant.const import Platform
 
 DOMAIN = "cl_power_control"
 NAME = "CL Power Control"
-VERSION = "0.4.0-dev.7"
+VERSION = "0.4.0-dev.8"
 MANUFACTURER = "CL Impianti"
 
 CONF_NAME = "name"
@@ -49,7 +49,11 @@ LOAD_ENERGY_MODE = "energy_mode"
 ENERGY_MODE_NORMAL = "normal"
 ENERGY_MODE_FLEXIBLE = "flexible"
 ENERGY_MODE_SURPLUS_ONLY = "surplus_only"
-ENERGY_MODE_LABELS = {ENERGY_MODE_NORMAL: "Normale", ENERGY_MODE_FLEXIBLE: "Flessibile", ENERGY_MODE_SURPLUS_ONLY: "Solo surplus"}
+ENERGY_MODE_LABELS = {
+    ENERGY_MODE_NORMAL: "Normale",
+    ENERGY_MODE_FLEXIBLE: "Flessibile",
+    ENERGY_MODE_SURPLUS_ONLY: "Solo surplus",
+}
 
 DEFAULT_LIMIT_W = 6000
 DEFAULT_WARNING_W = 5500
@@ -72,4 +76,12 @@ UNCONFIGURED_OPTION = "Non configurato"
 EVENT_LOAD_SHED = "cl_power_control_load_shed"
 EVENT_LOAD_RESTORED = "cl_power_control_load_restored"
 EVENT_PREALERT = "cl_power_control_prealert"
-PLATFORMS = [Platform.SENSOR, Platform.SWITCH, Platform.SELECT, Platform.NUMBER, Platform.BINARY_SENSOR, Platform.TEXT, Platform.BUTTON]
+PLATFORMS = [
+    Platform.SENSOR,
+    Platform.SWITCH,
+    Platform.SELECT,
+    Platform.NUMBER,
+    Platform.BINARY_SENSOR,
+    Platform.TEXT,
+    Platform.BUTTON,
+]
