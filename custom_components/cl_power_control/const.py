@@ -5,7 +5,7 @@ from homeassistant.const import Platform
 
 DOMAIN = "cl_power_control"
 NAME = "CL Power Control"
-VERSION = "0.4.0-dev.8"
+VERSION = "0.4.0-dev.9"
 MANUFACTURER = "CL Impianti"
 
 CONF_NAME = "name"
