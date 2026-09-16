@@ -15,6 +15,7 @@ from .const import (
 from .coordinator import CLPowerControlCoordinator
 from .dashboard import async_create_dashboard
 from .history import CLIncidentHistory
+from .notifications import CLPrealertManager
 from .model import new_load, normalize_priorities
 
 SERVICE_ADD_LOAD = "add_load"
@@ -145,6 +146,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await history.async_setup()
     hass.data[DOMAIN][f"{entry.entry_id}_history"] = history
 
+    prealert = CLPrealertManager(hass, entry, coordinator)
+    await prealert.async_setup()
+    hass.data[DOMAIN][f"{entry.entry_id}_prealert"] = prealert
+
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
 
@@ -161,6 +166,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if ok:
+        prealert = hass.data.get(DOMAIN, {}).pop(f"{entry.entry_id}_prealert", None)
+        if prealert is not None:
+            prealert.unload()
         history = hass.data.get(DOMAIN, {}).pop(f"{entry.entry_id}_history", None)
         if history is not None:
             history.unload()
