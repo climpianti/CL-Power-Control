@@ -5,7 +5,7 @@ from homeassistant.const import Platform
 
 DOMAIN = "cl_power_control"
 NAME = "CL Power Control"
-VERSION = "0.4.0-dev.4"
+VERSION = "0.4.0-dev.5"
 MANUFACTURER = "CL Impianti"
 
 CONF_NAME = "name"
@@ -31,6 +31,7 @@ CONF_BATTERY_SOC_SENSOR = "battery_soc_sensor"
 CONF_GRID_POWER_INVERT = "grid_power_invert"
 CONF_BATTERY_POWER_INVERT = "battery_power_invert"
 CONF_FLEX_GRID_ALLOWANCE_W = "flex_grid_allowance_w"
+CONF_PREALERT_ENABLED = "prealert_enabled"
 
 LOAD_ID = "id"
 LOAD_NAME = "name"
@@ -62,9 +63,11 @@ DEFAULT_GRID_POWER_INVERT = False
 DEFAULT_BATTERY_POWER_INVERT = False
 DEFAULT_FLEX_GRID_ALLOWANCE_W = 0
 DEFAULT_LOAD_ENERGY_MODE = ENERGY_MODE_NORMAL
+DEFAULT_PREALERT_ENABLED = False
 
 INSTALLER_SESSION_MINUTES = 15
 UNCONFIGURED_OPTION = "Non configurato"
 EVENT_LOAD_SHED = "cl_power_control_load_shed"
 EVENT_LOAD_RESTORED = "cl_power_control_load_restored"
+EVENT_PREALERT = "cl_power_control_prealert"
 PLATFORMS = [Platform.SENSOR, Platform.SWITCH, Platform.SELECT, Platform.NUMBER, Platform.BINARY_SENSOR, Platform.TEXT, Platform.BUTTON]
