@@ -48,6 +48,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
         CLMetricSensor(coord, entry, "energy_battery_soc", "Energy SOC batteria", "energy_battery_soc", PERCENTAGE, "mdi:battery-high"),
         CLEnergyDerivedSensor(coord, entry, "energy_grid_margin", "Energy Margine contatore", "grid_margin", "mdi:meter-electric-outline"),
         CLEnergyDerivedSensor(coord, entry, "energy_flexible_available", "Energy Disponibile carichi flessibili", "flexible_available", "mdi:power-plug-battery-outline"),
+        CLInterventionHistorySensor(hass, coord, entry),
     ]
     for load in entry.data.get("loads", []):
         entities.append(CLLoadPowerSensor(coord, entry, load[LOAD_ID]))
@@ -143,6 +144,45 @@ class CLEnergyDerivedSensor(CoordinatorEntity, SensorEntity):
             "surplus_w": (self.coordinator.data or {}).get("energy_surplus_power"),
             "grid_allowance_w": round(allowance, 1) if allowance is not None else None,
             "flexible_available_w": round(flexible, 1) if flexible is not None else None,
+        }
+
+
+class CLInterventionHistorySensor(CoordinatorEntity, SensorEntity):
+    """Expose persistent Power Control intervention history."""
+
+    _attr_has_entity_name = True
+    _attr_icon = "mdi:history"
+
+    def __init__(self, hass, coordinator, entry):
+        super().__init__(coordinator)
+        self._history = hass.data[DOMAIN].get(f"{entry.entry_id}_history")
+        self._attr_unique_id = f"{entry.entry_id}_intervention_history"
+        self._attr_name = "Storico interventi"
+        self._attr_device_info = _device(entry)
+
+    @property
+    def native_value(self):
+        latest = self._history.latest if self._history else None
+        if not latest:
+            return "Nessun intervento"
+        status = "in corso" if not latest.get("ended_at") else "completato"
+        return f"{latest.get('started_at', '')} - {status}"
+
+    @property
+    def extra_state_attributes(self):
+        if not self._history:
+            return {}
+        latest = self._history.latest or {}
+        return {
+            "interventi_memorizzati": self._history.incident_count,
+            "motivo": latest.get("reason"),
+            "potenza_intervento_w": latest.get("system_power_w"),
+            "soglia_w": latest.get("threshold_w"),
+            "iniziato": latest.get("started_at"),
+            "terminato": latest.get("ended_at"),
+            "carichi_al_momento_intervento": latest.get("snapshot", []),
+            "azioni_intervento": latest.get("actions", []),
+            "ultimi_interventi": self._history.recent,
         }
 
 
