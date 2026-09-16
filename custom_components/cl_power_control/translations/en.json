@@ -3,146 +3,54 @@
   "config": {
     "step": {
       "user": {
-        "title": "CL Power Control 0.2.5",
+        "title": "CL Power Control",
         "description": "Create a new installation. The PIN protects installer settings.",
-        "data": {
-          "name": "Installation name",
-          "installer_pin": "Installer PIN",
-          "installer_pin_confirm": "Confirm PIN"
-        }
+        "data": {"name": "Installation name", "installer_pin": "Installer PIN", "installer_pin_confirm": "Confirm PIN"}
       }
     },
-    "error": {
-      "pin_format": "The PIN must contain at least 4 digits.",
-      "pin_mismatch": "The PINs do not match."
-    }
+    "error": {"pin_format": "The PIN must contain at least 4 digits.", "pin_mismatch": "The PINs do not match."}
   },
   "options": {
     "step": {
       "init": {
         "title": "CL Power Control",
-        "menu_options": {
-          "quick": "Quick settings",
-          "installer_unlock": "Installer settings",
-          "loads": "Load management (installer PIN)",
-          "installer_pin_reset": "Reset installer PIN (recovery)"
-        }
+        "menu_options": {"quick": "Quick settings", "notifications": "Notifications and pre-alert", "loads": "Load management", "installer_unlock": "Installer settings", "installer_pin_reset": "Reset installer PIN"}
       },
       "quick": {
         "title": "Quick settings",
-        "data": {
-          "power_sensor": "Main power sensor",
-          "limit_w": "Immediate threshold",
-          "warning_w": "Delayed threshold",
-          "restore_w": "Restore threshold"
-        }
+        "description": "Configure the main power sensor and primary intervention thresholds.",
+        "data": {"power_sensor": "Main power sensor", "limit_w": "Immediate threshold", "warning_w": "Delayed threshold", "restore_w": "Restore threshold"}
       },
-      "loads": {
-        "title": "Load management",
-        "menu_options": {
-          "load_add": "Add load",
-          "load_select": "Edit load",
-          "load_delete": "Delete load",
-          "init": "Back"
-        }
+      "notifications": {
+        "title": "Notifications and pre-alert",
+        "description": "Select Home Assistant Companion devices that can receive a warning before load shedding. Available devices: {devices}",
+        "data": {"notification_targets": "Devices to notify"}
       },
+      "loads": {"title": "Load management", "menu_options": {"load_add": "Add load", "load_select": "Edit load", "load_delete": "Delete load", "init": "Back"}},
       "load_add": {
         "title": "Add load",
-        "data": {
-          "name": "Name",
-          "switch": "Command entity",
-          "power_sensor": "Power sensor",
-          "priority": "Priority",
-          "enabled": "Enabled",
-          "auto_restart": "Automatic restore",
-          "never_shed": "Never shed",
-          "min_active_w": "Minimum active power",
-          "estimated_w": "Estimated power"
-        }
+        "description": "Add a load managed by Power Control. Energy mode is independent from shedding priority.",
+        "data": {"name": "Name", "switch": "Command entity", "power_sensor": "Power sensor", "priority": "Priority", "energy_mode": "Energy mode", "enabled": "Management enabled", "auto_restart": "Automatic restore", "never_shed": "Never shed", "min_active_w": "Minimum active power", "estimated_w": "Estimated power"}
       },
-      "load_select": {
-        "title": "Select load",
-        "data": {
-          "load_id": "Load"
-        }
-      },
+      "load_select": {"title": "Select load", "data": {"load_id": "Load"}},
       "load_edit": {
         "title": "Edit load",
-        "data": {
-          "name": "Name",
-          "switch": "Command entity",
-          "power_sensor": "Power sensor",
-          "priority": "Priority",
-          "enabled": "Enabled",
-          "auto_restart": "Automatic restore",
-          "never_shed": "Never shed",
-          "min_active_w": "Minimum active power",
-          "estimated_w": "Estimated power"
-        }
+        "description": "Edit associations, priority and energy classification for this load.",
+        "data": {"name": "Name", "switch": "Command entity", "power_sensor": "Power sensor", "priority": "Priority", "energy_mode": "Energy mode", "enabled": "Management enabled", "auto_restart": "Automatic restore", "never_shed": "Never shed", "min_active_w": "Minimum active power", "estimated_w": "Estimated power"}
       },
-      "load_delete": {
-        "title": "Delete load",
-        "description": "Select the load to delete.",
-        "data": {
-          "load_id": "Load"
-        }
+      "load_delete": {"title": "Delete load", "description": "Select the load to delete.", "data": {"load_id": "Load"}},
+      "installer_unlock": {"title": "Installer access", "description": "Enter the installer PIN. If the dashboard already has an active session, access is shared.", "data": {"pin": "PIN"}},
+      "installer": {"title": "Installer configuration", "menu_options": {"loads": "Load management", "installer_power": "Thresholds and main sensor", "installer_energy": "Energy Control", "installer_timing": "Timing", "installer_pin_change": "Change installer PIN", "init": "Exit"}},
+      "installer_power": {"title": "Thresholds and main sensor", "description": "Configure thresholds used by the Power Control engine.", "data": {"power_sensor": "Main power sensor", "limit_w": "Immediate threshold", "warning_w": "Delayed threshold", "restore_w": "Restore threshold"}},
+      "installer_energy": {
+        "title": "Energy Control",
+        "description": "Associate energy sensors. Internal conventions: positive grid = import, negative grid = export; positive battery = discharge, negative battery = charge.",
+        "data": {"energy_enabled": "Enable Energy Control", "grid_power_sensor": "Grid power sensor", "grid_power_invert": "Invert grid power sign", "pv_power_sensor": "Solar production sensor", "battery_power_sensor": "Battery power sensor", "battery_power_invert": "Invert battery power sign", "battery_soc_sensor": "Battery SOC sensor"}
       },
-      "installer_unlock": {
-        "title": "Installer access",
-        "description": "Enter the installer PIN.",
-        "data": {
-          "pin": "PIN"
-        }
-      },
-      "installer": {
-        "title": "Installer configuration",
-        "menu_options": {
-          "loads": "Load management",
-          "installer_power": "Thresholds and main sensor",
-          "installer_timing": "Timing",
-          "installer_pin_change": "Change installer PIN",
-          "init": "Exit"
-        }
-      },
-      "installer_power": {
-        "title": "Thresholds and main sensor",
-        "data": {
-          "power_sensor": "Main power sensor",
-          "limit_w": "Immediate threshold",
-          "warning_w": "Delayed threshold",
-          "restore_w": "Restore threshold"
-        }
-      },
-      "installer_timing": {
-        "title": "Timing",
-        "data": {
-          "delay_immediate_sec": "Immediate threshold delay",
-          "delay_warning_sec": "Delayed threshold delay",
-          "wait_between_sheds_sec": "Wait between sheds",
-          "wait_before_restore_sec": "Wait before restore",
-          "wait_between_restores_sec": "Wait between restores"
-        }
-      },
-      "installer_pin_change": {
-        "title": "Change installer PIN",
-        "data": {
-          "new_pin": "New PIN",
-          "confirm_pin": "Confirm PIN"
-        }
-      },
-      "installer_pin_reset": {
-        "title": "Reset installer PIN",
-        "description": "Home Assistant administrator recovery. Use this if the previous PIN is rejected or forgotten.",
-        "data": {
-          "new_pin": "New PIN",
-          "confirm_pin": "Confirm PIN"
-        }
-      }
+      "installer_timing": {"title": "Timing", "description": "Configure load shedding and restore delays.", "data": {"delay_immediate_sec": "Immediate threshold delay", "delay_warning_sec": "Delayed threshold delay", "wait_between_sheds_sec": "Wait between sheds", "wait_before_restore_sec": "Wait before restore", "wait_between_restores_sec": "Wait between restores"}},
+      "installer_pin_change": {"title": "Change installer PIN", "data": {"new_pin": "New PIN", "confirm_pin": "Confirm PIN"}},
+      "installer_pin_reset": {"title": "Reset installer PIN", "description": "Home Assistant administrator recovery. Use this if the previous PIN is rejected or forgotten.", "data": {"new_pin": "New PIN", "confirm_pin": "Confirm PIN"}}
     },
-    "error": {
-      "invalid_pin": "Incorrect installer PIN.",
-      "pin_format": "The PIN must contain at least 4 digits.",
-      "pin_mismatch": "The PINs do not match."
-    }
+    "error": {"invalid_pin": "Incorrect installer PIN.", "pin_format": "The PIN must contain at least 4 digits.", "pin_mismatch": "The PINs do not match."}
   }
 }
