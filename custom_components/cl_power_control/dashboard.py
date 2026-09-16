@@ -43,7 +43,7 @@ async def async_install_assets(hass) -> None:
 
 
 def async_register_frontend_resource(hass) -> None:
-    frontend.add_extra_js_url(hass, "/local/cl_power_control/frontend.js?v=0.4.0-dev.5")
+    frontend.add_extra_js_url(hass, "/local/cl_power_control/frontend.js?v=0.4.0-dev.8")
 
 
 def _dashboards(hass):
@@ -75,7 +75,19 @@ def _load_card(hass, entry, load):
 
 def _installer_load_card(hass, entry, load):
     load_id = load[LOAD_ID]; rows = []
-    candidates = [("select", f"load_{load_id}_command_entity", "Entità comando"), ("select", f"load_{load_id}_power_sensor", "Sensore potenza"), ("select", f"load_{load_id}_priority", "Priorità"), ("switch", f"load_{load_id}_enabled", "Gestione attiva"), ("switch", f"load_{load_id}_auto_restart", "Auto riattivazione"), ("switch", f"load_{load_id}_never_shed", "Mai distaccabile"), ("number", f"load_{load_id}_min_active_w", "Potenza minima attiva"), ("number", f"load_{load_id}_estimated_w", "Potenza stimata"), ("button", f"load_{load_id}_test_on", "Test ON"), ("button", f"load_{load_id}_test_off", "Test OFF")]
+    candidates = [
+        ("select", f"load_{load_id}_command_entity", "Entità comando"),
+        ("select", f"load_{load_id}_power_sensor", "Sensore potenza"),
+        ("select", f"load_{load_id}_priority", "Priorità"),
+        ("select", f"load_{load_id}_energy_mode", "Modalità energia"),
+        ("switch", f"load_{load_id}_enabled", "Gestione attiva"),
+        ("switch", f"load_{load_id}_auto_restart", "Auto riattivazione"),
+        ("switch", f"load_{load_id}_never_shed", "Mai distaccabile"),
+        ("number", f"load_{load_id}_min_active_w", "Potenza minima attiva"),
+        ("number", f"load_{load_id}_estimated_w", "Potenza stimata"),
+        ("button", f"load_{load_id}_test_on", "Test ON"),
+        ("button", f"load_{load_id}_test_off", "Test OFF"),
+    ]
     for platform, suffix, label in candidates:
         entity_id = _eid(hass, entry, platform, suffix)
         if entity_id: rows.append({"entity": entity_id, "name": label})
@@ -138,7 +150,7 @@ def _build(hass, entry):
         if installer_lock: unlocked_rows.append({"entity":installer_lock,"name":"Blocca ora"})
         if unlocked_rows: installer_cards.append({"type":"conditional","conditions":[{"entity":installer_mode,"state":"on"}],"card":{"type":"entities","title":"🔓 Modalità installatore attiva","show_header_toggle":False,"entities":unlocked_rows}})
         management_card={"type":"custom:cl-power-control-load-manager-card","entry_id":entry.entry_id,"loads":[{"id":load.get(LOAD_ID,""),"name":load.get(LOAD_NAME,"Carico"),"priority":load.get("priority",999)} for load in loads]}
-        protected_cards=[{"type":"markdown","content":"## Configurazione Power Control\nModifica parametri e associazioni direttamente da questa sezione. I pulsanti **Test ON/OFF** comandano realmente l'entità selezionata."},management_card,_installer_global_card(hass,entry),*installer_load_cards,{"type":"markdown","content":"## Configurazione Energy Control\nPer associare rete, FV, batteria e SOC usa **Impostazioni → Dispositivi e servizi → CL Power Control → Configura → Impostazioni installatore → Energy Control**. La sessione PIN rimane condivisa."}]
+        protected_cards=[{"type":"markdown","content":"## Configurazione Power Control\nModifica parametri e associazioni direttamente da questa sezione. **Modalità energia** classifica ogni carico come Normale, Flessibile o Solo surplus; la priorità di distacco resta indipendente. I pulsanti **Test ON/OFF** comandano realmente l'entità selezionata."},management_card,_installer_global_card(hass,entry),*installer_load_cards,{"type":"markdown","content":"## Configurazione Energy Control\nPer associare rete, FV, batteria e SOC usa **Impostazioni → Dispositivi e servizi → CL Power Control → Configura → Impostazioni installatore → Energy Control**. La sessione PIN rimane condivisa."}]
         installer_cards.append({"type":"conditional","conditions":[{"entity":installer_mode,"state":"on"}],"card":{"type":"vertical-stack","cards":protected_cards}})
 
     return {"views":[{"title":"Panoramica","path":"panoramica","icon":"mdi:view-dashboard-outline","cards":overview_cards},{"title":"Power Control","path":"power-control","icon":"mdi:transmission-tower","cards":power_cards},{"title":"Energy Control","path":"energy-control","icon":"mdi:solar-power-variant","cards":energy_cards},{"title":"Installatore","path":"installatore","icon":"mdi:tools","cards":installer_cards}]}
