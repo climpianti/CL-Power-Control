@@ -5,7 +5,7 @@ from homeassistant.const import Platform
 
 DOMAIN = "cl_power_control"
 NAME = "CL Power Control"
-VERSION = "0.4.0-dev.5"
+VERSION = "0.4.0-dev.6"
 MANUFACTURER = "CL Impianti"
 
 CONF_NAME = "name"
@@ -32,6 +32,7 @@ CONF_GRID_POWER_INVERT = "grid_power_invert"
 CONF_BATTERY_POWER_INVERT = "battery_power_invert"
 CONF_FLEX_GRID_ALLOWANCE_W = "flex_grid_allowance_w"
 CONF_PREALERT_ENABLED = "prealert_enabled"
+CONF_NOTIFICATION_TARGETS = "notification_targets"
 
 LOAD_ID = "id"
 LOAD_NAME = "name"
@@ -64,6 +65,7 @@ DEFAULT_BATTERY_POWER_INVERT = False
 DEFAULT_FLEX_GRID_ALLOWANCE_W = 0
 DEFAULT_LOAD_ENERGY_MODE = ENERGY_MODE_NORMAL
 DEFAULT_PREALERT_ENABLED = False
+DEFAULT_NOTIFICATION_TARGETS: list[str] = []
 
 INSTALLER_SESSION_MINUTES = 15
 UNCONFIGURED_OPTION = "Non configurato"
