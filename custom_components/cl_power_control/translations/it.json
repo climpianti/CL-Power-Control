@@ -1,177 +1,25 @@
 {
   "title": "CL Power Control",
-  "config": {
-    "step": {
-      "user": {
-        "title": "CL Power Control",
-        "description": "Crea una nuova installazione. Il PIN protegge le impostazioni installatore.",
-        "data": {
-          "name": "Nome installazione",
-          "installer_pin": "PIN installatore",
-          "installer_pin_confirm": "Conferma PIN"
-        }
-      }
-    },
-    "error": {
-      "pin_format": "Il PIN deve contenere almeno 4 cifre.",
-      "pin_mismatch": "I PIN non coincidono."
-    }
-  },
+  "config": {"step": {"user": {"title": "CL Power Control", "description": "Crea una nuova installazione. Il PIN protegge le impostazioni installatore.", "data": {"name": "Nome installazione", "installer_pin": "PIN installatore", "installer_pin_confirm": "Conferma PIN"}}}, "error": {"pin_format": "Il PIN deve contenere almeno 4 cifre.", "pin_mismatch": "I PIN non coincidono."}},
   "options": {
     "step": {
-      "init": {
-        "title": "CL Power Control",
-        "menu_options": {
-          "quick": "Impostazioni rapide",
-          "notifications": "Notifiche e preavviso",
-          "loads": "Gestione carichi",
-          "installer_unlock": "Impostazioni installatore",
-          "installer_pin_reset": "Reimposta PIN installatore"
-        }
-      },
-      "quick": {
-        "title": "Impostazioni rapide",
-        "description": "Configura il sensore di potenza generale e le principali soglie di intervento.",
-        "data": {
-          "power_sensor": "Sensore potenza generale",
-          "limit_w": "Soglia immediata",
-          "warning_w": "Soglia ritardata",
-          "restore_w": "Soglia riattivazione"
-        }
-      },
-      "notifications": {
-        "title": "Notifiche e preavviso",
-        "description": "Seleziona i dispositivi Home Assistant Companion che possono ricevere il preavviso prima del distacco. Dispositivi disponibili: {devices}",
-        "data": {
-          "notification_targets": "Dispositivi da notificare"
-        }
-      },
-      "loads": {
-        "title": "Gestione carichi",
-        "menu_options": {
-          "load_add": "Aggiungi carico",
-          "load_select": "Modifica carico",
-          "load_delete": "Elimina carico",
-          "init": "Indietro"
-        }
-      },
-      "load_add": {
-        "title": "Aggiungi carico",
-        "description": "Aggiungi un carico gestibile da Power Control. La modalità energia è indipendente dalla priorità di distacco.",
-        "data": {
-          "name": "Nome",
-          "switch": "Entità comando",
-          "power_sensor": "Sensore potenza",
-          "priority": "Priorità",
-          "energy_mode": "Modalità energia",
-          "enabled": "Gestione attiva",
-          "auto_restart": "Riattivazione automatica",
-          "never_shed": "Mai distaccabile",
-          "min_active_w": "Potenza minima carico attivo",
-          "estimated_w": "Potenza stimata"
-        }
-      },
-      "load_select": {
-        "title": "Seleziona carico",
-        "data": {
-          "load_id": "Carico"
-        }
-      },
-      "load_edit": {
-        "title": "Modifica carico",
-        "description": "Modifica associazioni, priorità e classificazione energetica del carico.",
-        "data": {
-          "name": "Nome",
-          "switch": "Entità comando",
-          "power_sensor": "Sensore potenza",
-          "priority": "Priorità",
-          "energy_mode": "Modalità energia",
-          "enabled": "Gestione attiva",
-          "auto_restart": "Riattivazione automatica",
-          "never_shed": "Mai distaccabile",
-          "min_active_w": "Potenza minima carico attivo",
-          "estimated_w": "Potenza stimata"
-        }
-      },
-      "load_delete": {
-        "title": "Elimina carico",
-        "description": "Seleziona il carico da eliminare.",
-        "data": {
-          "load_id": "Carico"
-        }
-      },
-      "installer_unlock": {
-        "title": "Accesso installatore",
-        "description": "Inserisci il PIN installatore. Se la dashboard ha già una sessione attiva, l'accesso viene condiviso.",
-        "data": {
-          "pin": "PIN"
-        }
-      },
-      "installer": {
-        "title": "Configurazione installatore",
-        "menu_options": {
-          "loads": "Gestione carichi",
-          "installer_power": "Soglie e sensore generale",
-          "installer_energy": "Energy Control",
-          "installer_timing": "Tempi di intervento",
-          "installer_pin_change": "Cambia PIN installatore",
-          "init": "Esci"
-        }
-      },
-      "installer_power": {
-        "title": "Soglie e sensore generale",
-        "description": "Imposta le soglie utilizzate dal motore Power Control.",
-        "data": {
-          "power_sensor": "Sensore potenza generale",
-          "limit_w": "Soglia immediata",
-          "warning_w": "Soglia ritardata",
-          "restore_w": "Soglia riattivazione"
-        }
-      },
-      "installer_energy": {
-        "title": "Energy Control",
-        "description": "Associa i sensori energetici. Convenzioni interne: rete positiva = prelievo, negativa = immissione; batteria positiva = scarica, negativa = carica.",
-        "data": {
-          "energy_enabled": "Abilita Energy Control",
-          "grid_power_sensor": "Sensore potenza rete",
-          "grid_power_invert": "Inverti segno potenza rete",
-          "pv_power_sensor": "Sensore produzione fotovoltaica",
-          "battery_power_sensor": "Sensore potenza batteria",
-          "battery_power_invert": "Inverti segno potenza batteria",
-          "battery_soc_sensor": "Sensore SOC batteria"
-        }
-      },
-      "installer_timing": {
-        "title": "Tempi di intervento",
-        "description": "Configura i ritardi di distacco e riattivazione.",
-        "data": {
-          "delay_immediate_sec": "Ritardo soglia immediata",
-          "delay_warning_sec": "Ritardo soglia ritardata",
-          "wait_between_sheds_sec": "Attesa tra distacchi",
-          "wait_before_restore_sec": "Attesa prima riattivazione",
-          "wait_between_restores_sec": "Attesa tra riattivazioni"
-        }
-      },
-      "installer_pin_change": {
-        "title": "Cambia PIN installatore",
-        "data": {
-          "new_pin": "Nuovo PIN",
-          "confirm_pin": "Conferma PIN"
-        }
-      },
-      "installer_pin_reset": {
-        "title": "Reimposta PIN installatore",
-        "description": "Recupero amministratore Home Assistant. Usa questa funzione se il PIN precedente non viene accettato o è stato dimenticato.",
-        "data": {
-          "new_pin": "Nuovo PIN",
-          "confirm_pin": "Conferma PIN"
-        }
-      }
+      "init": {"title": "CL Power Control", "menu_options": {"quick": "Impostazioni rapide", "notifications": "Notifiche e preavviso", "loads": "Gestione carichi", "installer_unlock": "Impostazioni installatore", "installer_pin_reset": "Reimposta PIN installatore"}},
+      "quick": {"title": "Impostazioni rapide", "description": "Configura il sensore di potenza generale e le principali soglie di intervento.", "data": {"power_sensor": "Sensore potenza generale", "limit_w": "Soglia immediata", "warning_w": "Soglia ritardata", "restore_w": "Soglia riattivazione"}},
+      "notifications": {"title": "Notifiche e preavviso", "description": "Seleziona i dispositivi Home Assistant Companion che possono ricevere il preavviso prima del distacco. Dispositivi disponibili: {devices}", "data": {"notification_targets": "Dispositivi da notificare"}},
+      "loads": {"title": "Gestione carichi", "menu_options": {"load_add": "Aggiungi carico", "load_select": "Modifica carico", "load_delete": "Elimina carico", "init": "Indietro"}},
+      "load_add": {"title": "Aggiungi carico", "description": "Aggiungi un carico gestibile da Power Control. La modalità energia è indipendente dalla priorità di distacco.", "data": {"name": "Nome", "switch": "Entità comando", "power_sensor": "Sensore potenza", "priority": "Priorità", "energy_mode": "Modalità energia", "energy_action": "Azione energetica", "enabled": "Gestione attiva", "auto_restart": "Riattivazione automatica", "never_shed": "Mai distaccabile", "min_active_w": "Potenza minima carico attivo", "estimated_w": "Potenza stimata"}},
+      "load_select": {"title": "Seleziona carico", "data": {"load_id": "Carico"}},
+      "load_edit": {"title": "Modifica carico", "description": "Modifica associazioni, priorità e classificazione energetica del carico.", "data": {"name": "Nome", "switch": "Entità comando", "power_sensor": "Sensore potenza", "priority": "Priorità", "energy_mode": "Modalità energia", "energy_action": "Azione energetica", "enabled": "Gestione attiva", "auto_restart": "Riattivazione automatica", "never_shed": "Mai distaccabile", "min_active_w": "Potenza minima carico attivo", "estimated_w": "Potenza stimata"}},
+      "load_energy_details": {"title": "Dettagli azione energetica", "description": "Configura solo i parametri necessari per l'azione energetica scelta. Per Climate comfort, al termine della disponibilità energetica verranno ripristinati stato/modalità e setpoint precedenti quando sarà attivato il motore automatico.", "data": {"energy_target_temp": "Temperatura target energia", "energy_aux_entity": "Entità ausiliaria"}},
+      "load_delete": {"title": "Elimina carico", "description": "Seleziona il carico da eliminare.", "data": {"load_id": "Carico"}},
+      "installer_unlock": {"title": "Accesso installatore", "description": "Inserisci il PIN installatore. Se la dashboard ha già una sessione attiva, l'accesso viene condiviso.", "data": {"pin": "PIN"}},
+      "installer": {"title": "Configurazione installatore", "menu_options": {"loads": "Gestione carichi", "installer_power": "Soglie e sensore generale", "installer_energy": "Energy Control", "installer_timing": "Tempi di intervento", "installer_pin_change": "Cambia PIN installatore", "init": "Esci"}},
+      "installer_power": {"title": "Soglie e sensore generale", "description": "Imposta le soglie utilizzate dal motore Power Control.", "data": {"power_sensor": "Sensore potenza generale", "limit_w": "Soglia immediata", "warning_w": "Soglia ritardata", "restore_w": "Soglia riattivazione"}},
+      "installer_energy": {"title": "Energy Control", "description": "Associa i sensori energetici. Convenzioni interne: rete positiva = prelievo, negativa = immissione; batteria positiva = scarica, negativa = carica.", "data": {"energy_enabled": "Abilita Energy Control", "grid_power_sensor": "Sensore potenza rete", "grid_power_invert": "Inverti segno potenza rete", "pv_power_sensor": "Sensore produzione fotovoltaica", "battery_power_sensor": "Sensore potenza batteria", "battery_power_invert": "Inverti segno potenza batteria", "battery_soc_sensor": "Sensore SOC batteria"}},
+      "installer_timing": {"title": "Tempi di intervento", "description": "Configura i ritardi di distacco e riattivazione.", "data": {"delay_immediate_sec": "Ritardo soglia immediata", "delay_warning_sec": "Ritardo soglia ritardata", "wait_between_sheds_sec": "Attesa tra distacchi", "wait_before_restore_sec": "Attesa prima riattivazione", "wait_between_restores_sec": "Attesa tra riattivazioni"}},
+      "installer_pin_change": {"title": "Cambia PIN installatore", "data": {"new_pin": "Nuovo PIN", "confirm_pin": "Conferma PIN"}},
+      "installer_pin_reset": {"title": "Reimposta PIN installatore", "description": "Recupero amministratore Home Assistant. Usa questa funzione se il PIN precedente non viene accettato o è stato dimenticato.", "data": {"new_pin": "Nuovo PIN", "confirm_pin": "Conferma PIN"}}
     },
-    "error": {
-      "invalid_pin": "PIN installatore non corretto.",
-      "pin_format": "Il PIN deve contenere almeno 4 cifre.",
-      "pin_mismatch": "I PIN non coincidono."
-    }
+    "error": {"invalid_pin": "PIN installatore non corretto.", "pin_format": "Il PIN deve contenere almeno 4 cifre.", "pin_mismatch": "I PIN non coincidono."}
   }
 }
