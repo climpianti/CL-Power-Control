@@ -1,7 +1,7 @@
 {
   "domain": "cl_power_control",
   "name": "CL Power Control",
-  "version": "0.4.0-beta.3",
+  "version": "0.4.0-beta.4",
   "documentation": "https://github.com/climpianti/CL-Power-Control",
   "issue_tracker": "https://github.com/climpianti/CL-Power-Control/issues",
   "codeowners": ["@climpianti"],
