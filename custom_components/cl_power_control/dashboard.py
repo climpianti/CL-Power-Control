@@ -32,7 +32,7 @@ async def async_install_assets(hass) -> None:
     await hass.async_add_executor_job(_copy)
 
 
-def async_register_frontend_resource(hass) -> None: frontend.add_extra_js_url(hass,"/local/cl_power_control/frontend.js?v=0.4.0-dev.9")
+def async_register_frontend_resource(hass) -> None: frontend.add_extra_js_url(hass,"/local/cl_power_control/frontend.js?v=0.4.0-beta.2")
 
 def _dashboards(hass):
     obj=hass.data.get(LOVELACE_DOMAIN)
