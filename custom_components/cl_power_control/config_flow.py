@@ -145,9 +145,24 @@ class CLPowerControlOptionsFlow(config_entries.OptionsFlow):
 
     async def async_step_notifications(self, user_input=None):
         choices = self._mobile_services()
-        if user_input is not None: self._data[CONF_NOTIFICATION_TARGETS] = list(user_input.get(CONF_NOTIFICATION_TARGETS, [])); return await self._save()
+        if user_input is not None:
+            self._data[CONF_NOTIFICATION_TARGETS] = list(user_input.get(CONF_NOTIFICATION_TARGETS, []))
+            return await self._save()
         current = [x for x in self._data.get(CONF_NOTIFICATION_TARGETS, []) if x in choices]
-        return self.async_show_form(step_id="notifications", data_schema=vol.Schema({vol.Optional(CONF_NOTIFICATION_TARGETS, default=current): vol.All([vol.In(choices)])}), description_placeholders={"devices": str(len(choices))})
+        options = [{"value": value, "label": label} for value, label in choices.items()]
+        return self.async_show_form(
+            step_id="notifications",
+            data_schema=vol.Schema({
+                vol.Optional(CONF_NOTIFICATION_TARGETS, default=current): SelectSelector(
+                    SelectSelectorConfig(
+                        options=options,
+                        multiple=True,
+                        mode=SelectSelectorMode.DROPDOWN,
+                    )
+                )
+            }),
+            description_placeholders={"devices": str(len(choices))},
+        )
 
     async def async_step_loads(self, user_input=None):
         loads = sort_loads(list(self._data.get(CONF_LOADS, [])))
