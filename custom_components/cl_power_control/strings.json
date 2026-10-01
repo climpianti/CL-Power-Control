@@ -120,7 +120,7 @@
       },
       "installer_power": {
         "title": "Soglie e sensore generale",
-        "description": "Imposta le soglie utilizzate dal motore Power Control.",
+        "description": "Imposta le soglie utilizzate dal motore Power Control. Se la compensazione rete/FV è attiva, queste soglie rappresentano il limite di prelievo dalla rete.",
         "data": {
           "power_sensor": "Sensore potenza generale",
           "limit_w": "Soglia immediata",
@@ -130,9 +130,10 @@
       },
       "installer_energy": {
         "title": "Energy Control",
-        "description": "Associa i sensori energetici. Convenzioni interne: rete positiva = prelievo, negativa = immissione; batteria positiva = scarica, negativa = carica.",
+        "description": "Associa i sensori energetici. Convenzioni interne: rete positiva = prelievo, negativa = immissione; batteria positiva = scarica, negativa = carica. La compensazione rete/FV fa intervenire Power Control sul prelievo reale dal contatore, così la produzione locale aumenta automaticamente la potenza utilizzabile.",
         "data": {
           "energy_enabled": "Abilita Energy Control",
+          "grid_aware_power_control": "Compensa Power Control con rete/FV",
           "grid_power_sensor": "Sensore potenza rete",
           "grid_power_invert": "Inverti segno potenza rete",
           "pv_power_sensor": "Sensore produzione fotovoltaica",
