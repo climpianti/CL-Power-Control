@@ -38,6 +38,7 @@ def _power_schema(defaults: dict) -> vol.Schema:
 def _energy_schema(defaults: dict) -> vol.Schema:
     return vol.Schema({
         vol.Required(CONF_ENERGY_ENABLED, default=defaults.get(CONF_ENERGY_ENABLED, DEFAULT_ENERGY_ENABLED)): BooleanSelector(),
+        vol.Required(CONF_GRID_AWARE_POWER_CONTROL, default=defaults.get(CONF_GRID_AWARE_POWER_CONTROL, DEFAULT_GRID_AWARE_POWER_CONTROL)): BooleanSelector(),
         vol.Optional(CONF_GRID_POWER_SENSOR, description={"suggested_value": defaults.get(CONF_GRID_POWER_SENSOR, "")}): EntitySelector(EntitySelectorConfig(domain="sensor", device_class="power")),
         vol.Required(CONF_GRID_POWER_INVERT, default=defaults.get(CONF_GRID_POWER_INVERT, DEFAULT_GRID_POWER_INVERT)): BooleanSelector(),
         vol.Optional(CONF_PV_POWER_SENSOR, description={"suggested_value": defaults.get(CONF_PV_POWER_SENSOR, "")}): EntitySelector(EntitySelectorConfig(domain="sensor", device_class="power")),
@@ -107,7 +108,7 @@ class CLPowerControlConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             else:
                 salt, digest = create_pin_hash(pin)
                 data = {CONF_NAME: user_input[CONF_NAME], CONF_INSTALLER_PIN_SALT: salt, CONF_INSTALLER_PIN_HASH: digest, CONF_LOADS: []}
-                options = {CONF_ENABLED: True, CONF_LIMIT_W: DEFAULT_LIMIT_W, CONF_WARNING_W: DEFAULT_WARNING_W, CONF_RESTORE_W: DEFAULT_RESTORE_W, CONF_DELAY_IMMEDIATE_SEC: DEFAULT_DELAY_IMMEDIATE_SEC, CONF_DELAY_WARNING_SEC: DEFAULT_DELAY_WARNING_SEC, CONF_WAIT_BETWEEN_SHEDS_SEC: DEFAULT_WAIT_BETWEEN_SHEDS_SEC, CONF_WAIT_BEFORE_RESTORE_SEC: DEFAULT_WAIT_BEFORE_RESTORE_SEC, CONF_WAIT_BETWEEN_RESTORES_SEC: DEFAULT_WAIT_BETWEEN_RESTORES_SEC, CONF_ENERGY_ENABLED: DEFAULT_ENERGY_ENABLED, CONF_PREALERT_ENABLED: DEFAULT_PREALERT_ENABLED, CONF_NOTIFICATION_TARGETS: DEFAULT_NOTIFICATION_TARGETS}
+                options = {CONF_ENABLED: True, CONF_LIMIT_W: DEFAULT_LIMIT_W, CONF_WARNING_W: DEFAULT_WARNING_W, CONF_RESTORE_W: DEFAULT_RESTORE_W, CONF_DELAY_IMMEDIATE_SEC: DEFAULT_DELAY_IMMEDIATE_SEC, CONF_DELAY_WARNING_SEC: DEFAULT_DELAY_WARNING_SEC, CONF_WAIT_BETWEEN_SHEDS_SEC: DEFAULT_WAIT_BETWEEN_SHEDS_SEC, CONF_WAIT_BEFORE_RESTORE_SEC: DEFAULT_WAIT_BEFORE_RESTORE_SEC, CONF_WAIT_BETWEEN_RESTORES_SEC: DEFAULT_WAIT_BETWEEN_RESTORES_SEC, CONF_ENERGY_ENABLED: DEFAULT_ENERGY_ENABLED, CONF_GRID_AWARE_POWER_CONTROL: DEFAULT_GRID_AWARE_POWER_CONTROL, CONF_PREALERT_ENABLED: DEFAULT_PREALERT_ENABLED, CONF_NOTIFICATION_TARGETS: DEFAULT_NOTIFICATION_TARGETS}
                 return self.async_create_entry(title=user_input[CONF_NAME], data=data, options=options)
         schema = vol.Schema({
             vol.Required(CONF_NAME, default=NAME): TextSelector(TextSelectorConfig(type=TextSelectorType.TEXT)),
