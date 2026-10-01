@@ -26,11 +26,15 @@ async def async_setup_entry(hass, entry, async_add_entities):
     coord = hass.data[DOMAIN][entry.entry_id]
     entities = [
         CLMetricSensor(coord, entry, "current_power", "Potenza attuale", "current_power", UnitOfPower.WATT, "mdi:flash"),
+        CLMetricSensor(coord, entry, "control_power", "Power Control Potenza di controllo", "control_power_w", UnitOfPower.WATT, "mdi:meter-electric"),
         CLMetricSensor(coord, entry, "headroom", "Potenza disponibile", "headroom_w", UnitOfPower.WATT, "mdi:flash-outline"),
         CLMetricSensor(coord, entry, "suspended_power", "Potenza sospesa", "suspended_power", UnitOfPower.WATT, "mdi:pause-circle"),
         CLMetricSensor(coord, entry, "limit", "Soglia immediata", "limit_w", UnitOfPower.WATT, "mdi:flash-alert"),
         CLMetricSensor(coord, entry, "warning", "Soglia ritardata", "warning_w", UnitOfPower.WATT, "mdi:timer-alert"),
         CLMetricSensor(coord, entry, "restore", "Soglia riattivazione", "restore_w", UnitOfPower.WATT, "mdi:restart"),
+        CLMetricSensor(coord, entry, "effective_limit", "Power Control Limite dinamico equivalente", "effective_limit_w", UnitOfPower.WATT, "mdi:solar-power-variant"),
+        CLMetricSensor(coord, entry, "effective_warning", "Power Control Soglia ritardata dinamica", "effective_warning_w", UnitOfPower.WATT, "mdi:solar-power-variant-outline"),
+        CLMetricSensor(coord, entry, "effective_restore", "Power Control Soglia riattivazione dinamica", "effective_restore_w", UnitOfPower.WATT, "mdi:restart-alert"),
         CLMetricSensor(coord, entry, "load_count", "Carichi configurati", "load_count", None, "mdi:format-list-numbered"),
         CLMetricSensor(coord, entry, "suspended_count", "Carichi sospesi", "suspended_count", None, "mdi:power-plug-off"),
         CLMetricSensor(coord, entry, "last_event", "Ultimo evento", "last_event", None, "mdi:history"),
@@ -89,6 +93,11 @@ class CLMetricSensor(CoordinatorEntity, SensorEntity):
                 "warning_w": self.coordinator.data.get("warning_w"),
                 "restore_w": self.coordinator.data.get("restore_w"),
                 "last_event": self.coordinator.data.get("last_event"),
+                "control_power_w": self.coordinator.data.get("control_power_w"),
+                "control_source": self.coordinator.data.get("control_source"),
+                "grid_aware_power_control": self.coordinator.data.get("grid_aware_power_control"),
+                "grid_aware_power_control_active": self.coordinator.data.get("grid_aware_power_control_active"),
+                "effective_limit_w": self.coordinator.data.get("effective_limit_w"),
             }
         if self._data_key.startswith("energy_"):
             return {
