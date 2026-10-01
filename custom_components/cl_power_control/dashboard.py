@@ -368,7 +368,7 @@ def _build(hass, entry):
         power_cards.append({"type": "grid", "columns": 3, "square": False, "cards": dynamic_tiles})
     power_cards.append({
         "type": "markdown",
-        "content": "**Compensazione FV / rete**  \\nSe attivata in Energy Control, Power Control usa lo **scambio reale con la rete** per decidere gli interventi. Con limite rete 3000 W e 2500 W di produzione locale disponibile, il limite equivalente sui consumi può arrivare a circa **5500 W**, finché la produzione resta disponibile."
+        "content": "**Compensazione FV / rete**  \nSe attivata in Energy Control, Power Control usa lo **scambio reale con la rete** per decidere gli interventi. Con limite rete 3000 W e 2500 W di produzione locale disponibile, il limite equivalente sui consumi può arrivare a circa **5500 W**, finché la produzione resta disponibile."
     })
     if prealert:
         power_cards.append(
