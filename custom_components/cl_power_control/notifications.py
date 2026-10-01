@@ -48,7 +48,7 @@ class CLPrealertManager:
 
     def _handle_update(self) -> None:
         data = self.coordinator.data or {}
-        current = data.get("current_power")
+        current = data.get("control_power_w", data.get("current_power"))
         warning = data.get("warning_w")
         limit = data.get("limit_w")
         if current is None or warning is None or limit is None:
@@ -75,13 +75,15 @@ class CLPrealertManager:
     async def _notify(self, kind: str, current: float, threshold: float, delay: int) -> None:
         if kind == "immediata":
             title = "CL Power Control - intervento imminente"
-            message = (f"Assorbimento {current:.0f} W oltre la soglia immediata di {threshold:.0f} W. "
+            source_label = "Prelievo rete" if (self.coordinator.data or {}).get("control_source") == "grid" else "Assorbimento"
+            message = (f"{source_label} {current:.0f} W oltre la soglia immediata di {threshold:.0f} W. "
                        f"Se il consumo non scende, il sistema potrà distaccare un carico tra circa {delay} secondi. "
                        "Riduci ora i consumi se vuoi evitare l'intervento automatico.")
         else:
             minutes = max(1, round(delay / 60))
             title = "CL Power Control - consumo elevato"
-            message = (f"Assorbimento {current:.0f} W oltre la soglia ritardata di {threshold:.0f} W. "
+            source_label = "Prelievo rete" if (self.coordinator.data or {}).get("control_source") == "grid" else "Assorbimento"
+            message = (f"{source_label} {current:.0f} W oltre la soglia ritardata di {threshold:.0f} W. "
                        f"Se resta sopra soglia, Power Control potrà intervenire tra circa {minutes} minuti. "
                        "Riduci i consumi per evitare il distacco automatico.")
 
