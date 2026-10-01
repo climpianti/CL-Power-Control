@@ -278,11 +278,15 @@ def _build(hass, entry):
         return _eid(hass, entry, "sensor", suffix)
 
     current = sensor("current_power") or "sensor.cl_power_control_potenza_attuale"
+    control_power = sensor("control_power")
     headroom = sensor("headroom") or "sensor.cl_power_control_potenza_disponibile"
     suspended_power = sensor("suspended_power") or "sensor.cl_power_control_potenza_sospesa"
     limit = sensor("limit") or "sensor.cl_power_control_soglia_immediata"
     warning = sensor("warning") or "sensor.cl_power_control_soglia_ritardata"
     restore = sensor("restore") or "sensor.cl_power_control_soglia_riattivazione"
+    effective_limit = sensor("effective_limit") or limit
+    effective_warning = sensor("effective_warning") or warning
+    effective_restore = sensor("effective_restore") or restore
     last_event = sensor("last_event") or "sensor.cl_power_control_ultimo_evento"
     intervention_history = sensor("intervention_history")
     enabled = _eid(hass, entry, "switch", "enabled", "switch.cl_power_control_controllo_attivo")
@@ -347,12 +351,25 @@ def _build(hass, entry):
             "refresh_interval": 15,
             "entities": [
                 {"entity": current, "name": "Potenza"},
-                {"entity": warning, "name": "Soglia ritardata"},
-                {"entity": limit, "name": "Soglia immediata"},
-                {"entity": restore, "name": "Riattivazione"},
+                {"entity": effective_warning, "name": "Soglia ritardata dinamica"},
+                {"entity": effective_limit, "name": "Limite dinamico equivalente"},
+                {"entity": effective_restore, "name": "Riattivazione dinamica"},
             ],
         },
     ]
+    dynamic_tiles = []
+    if control_power:
+        dynamic_tiles.append({"type": "tile", "entity": control_power, "name": "Potenza di controllo"})
+    if effective_limit:
+        dynamic_tiles.append({"type": "tile", "entity": effective_limit, "name": "Limite dinamico equivalente"})
+    if headroom:
+        dynamic_tiles.append({"type": "tile", "entity": headroom, "name": "Margine disponibile"})
+    if dynamic_tiles:
+        power_cards.append({"type": "grid", "columns": 3, "square": False, "cards": dynamic_tiles})
+    power_cards.append({
+        "type": "markdown",
+        "content": "**Compensazione FV / rete**  \\nSe attivata in Energy Control, Power Control usa lo **scambio reale con la rete** per decidere gli interventi. Con limite rete 3000 W e 2500 W di produzione locale disponibile, il limite equivalente sui consumi può arrivare a circa **5500 W**, finché la produzione resta disponibile."
+    })
     if prealert:
         power_cards.append(
             {
