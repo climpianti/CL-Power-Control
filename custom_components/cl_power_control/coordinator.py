@@ -202,7 +202,7 @@ class CLPowerControlCoordinator(DataUpdateCoordinator[dict]):
             energy=self._energy_metrics()
             grid_aware_requested=bool(self.conf(CONF_GRID_AWARE_POWER_CONTROL,DEFAULT_GRID_AWARE_POWER_CONTROL))
             grid_power=energy.get("energy_grid_power")
-            grid_aware_active=bool(grid_aware_requested and energy.get("energy_enabled") and energy.get("energy_status")=="Attivo" and grid_power is not None)
+            grid_aware_active=bool(grid_aware_requested and energy.get("energy_enabled") and grid_power is not None)
             control_power=float(grid_power) if grid_aware_active else current
             control_source="grid" if grid_aware_active else ("global" if global_power is not None else "virtual")
             effective_limit_w=current+(limit_w-control_power) if grid_aware_active else limit_w
