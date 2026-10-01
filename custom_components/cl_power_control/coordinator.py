@@ -199,14 +199,23 @@ class CLPowerControlCoordinator(DataUpdateCoordinator[dict]):
         try:
             raw_loads=normalize_priorities(list(self.entry.data.get(CONF_LOADS,[]))); global_power=self._read_float(self.conf(CONF_POWER_SENSOR,"")); virtual_total=sum(self._load_power(load) for load in raw_loads); current=global_power if global_power is not None else virtual_total
             limit_w=float(self.conf(CONF_LIMIT_W,DEFAULT_LIMIT_W)); warning_w=float(self.conf(CONF_WARNING_W,DEFAULT_WARNING_W)); restore_w=float(self.conf(CONF_RESTORE_W,DEFAULT_RESTORE_W)); enabled=bool(self.conf(CONF_ENABLED,True))
-            if enabled: await self._manage_power(current,raw_loads,limit_w,warning_w,restore_w)
+            energy=self._energy_metrics()
+            grid_aware_requested=bool(self.conf(CONF_GRID_AWARE_POWER_CONTROL,DEFAULT_GRID_AWARE_POWER_CONTROL))
+            grid_power=energy.get("energy_grid_power")
+            grid_aware_active=bool(grid_aware_requested and energy.get("energy_enabled") and energy.get("energy_status")=="Attivo" and grid_power is not None)
+            control_power=float(grid_power) if grid_aware_active else current
+            control_source="grid" if grid_aware_active else ("global" if global_power is not None else "virtual")
+            effective_limit_w=current+(limit_w-control_power) if grid_aware_active else limit_w
+            effective_warning_w=current+(warning_w-control_power) if grid_aware_active else warning_w
+            effective_restore_w=current+(restore_w-control_power) if grid_aware_active else restore_w
+            if enabled: await self._manage_power(control_power,raw_loads,limit_w,warning_w,restore_w)
             else: self._reset_timers()
             load_states=[]
             for load in raw_loads:
                 load_id=load[LOAD_ID]; power=self._load_power(load); switch_state=self._switch_state(load.get(LOAD_SWITCH,"")); suspended=load_id in self._suspended
                 if suspended and self._load_is_active(load) and power>float(load.get(LOAD_MIN_ACTIVE_W,10)): self._suspended.pop(load_id,None); self._shed_at.pop(load_id,None); suspended=False
                 load_states.append({**load,"current_power":power,"switch_state":switch_state,"suspended":suspended,"suspended_power":self._suspended.get(load_id,0.0)})
-            data={"current_power":round(current,1),"source":"global" if global_power is not None else "virtual","limit_w":limit_w,"warning_w":warning_w,"restore_w":restore_w,"headroom_w":round(limit_w-current,1),"load_count":len(raw_loads),"suspended_count":len(self._suspended),"suspended_power":round(sum(self._suspended.values()),1),"enabled":enabled,"last_event":self.last_event,"installer_unlocked":self.installer_unlocked,"installer_remaining_sec":self.installer_remaining_sec,"installer_access_status":self.installer_access_status,"loads":load_states}; data.update(self._energy_metrics()); return data
+            data={"current_power":round(current,1),"source":"global" if global_power is not None else "virtual","control_power_w":round(control_power,1),"control_source":control_source,"grid_aware_power_control":grid_aware_requested,"grid_aware_power_control_active":grid_aware_active,"limit_w":limit_w,"warning_w":warning_w,"restore_w":restore_w,"effective_limit_w":round(effective_limit_w,1),"effective_warning_w":round(effective_warning_w,1),"effective_restore_w":round(effective_restore_w,1),"headroom_w":round(limit_w-control_power,1),"load_count":len(raw_loads),"suspended_count":len(self._suspended),"suspended_power":round(sum(self._suspended.values()),1),"enabled":enabled,"last_event":self.last_event,"installer_unlocked":self.installer_unlocked,"installer_remaining_sec":self.installer_remaining_sec,"installer_access_status":self.installer_access_status,"loads":load_states}; data.update(energy); return data
         except Exception as err: raise UpdateFailed(str(err)) from err
 
     def _reset_timers(self) -> None: self._over_limit_since=None; self._over_warning_since=None; self._under_restore_since=None
