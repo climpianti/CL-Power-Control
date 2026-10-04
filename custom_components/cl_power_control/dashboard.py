@@ -62,6 +62,20 @@ def _dashboards(hass):
     return getattr(obj, "dashboards", None)
 
 
+
+def _cl_control_home_path(hass) -> str:
+    """Return the CL Control customer dashboard home when it exists."""
+    panels = hass.data.get(frontend.DATA_PANELS, {})
+    for path, panel in panels.items():
+        component_name = str(getattr(panel, "component_name", "") or "")
+        sidebar_title = str(getattr(panel, "sidebar_title", "") or "")
+        if component_name != "lovelace":
+            continue
+        if str(path) == "cl-control" or sidebar_title.casefold() == "cl control":
+            return f"/{str(path).strip('/')}/home"
+    return ""
+
+
 def _eid(hass, entry, platform, unique_suffix, fallback=""):
     registry = er.async_get(hass)
     return registry.async_get_entity_id(platform, DOMAIN, f"{entry.entry_id}_{unique_suffix}") or fallback
@@ -163,17 +177,27 @@ def _build(hass, entry):
         if suspended:
             suspended_entities.append({"entity": suspended, "name": load.get(LOAD_NAME, "Carico")})
 
+    header_card = {
+        "type": "markdown",
+        "card_size": 1,
+        "content": (
+            '<table role="presentation" width="100%"><tr>'
+            '<td width="76" valign="middle"><img src="/local/cl_power_control/header_logo.png" width="62"></td>'
+            '<td valign="middle"><span style="font-size:20px"><b>CL Power Control</b></span><br>'
+            '<span style="font-size:13px">Gestione intelligente dei carichi elettrici</span></td>'
+            '</tr></table>'
+        ),
+    }
+    cl_control_home = _cl_control_home_path(hass)
+    if cl_control_home:
+        header_card["tap_action"] = {
+            "action": "navigate",
+            "navigation_path": cl_control_home,
+        }
+        header_card["hold_action"] = {"action": "none"}
+
     cards = [
-        {
-            "type": "markdown",
-            "content": (
-                '<table role="presentation" width="100%"><tr>'
-                '<td width="104" valign="middle"><img src="/local/cl_power_control/header_logo.png" width="86"></td>'
-                '<td valign="middle"><span style="font-size:24px"><b>CL Power Control</b></span><br>'
-                '<span style="font-size:14px">Gestione intelligente dei carichi elettrici</span></td>'
-                '</tr></table>'
-            ),
-        },
+        header_card,
         {
             "type": "grid", "columns": 2, "square": False,
             "cards": [
