@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.4.0
+- Promossa a stabile la serie sviluppata e validata fino alla `0.4.0-beta.5`.
+- Aggiunto Energy Control con sensori rete, fotovoltaico, batteria e SOC.
+- Aggiunti consumo casa, import/export rete, surplus, carica/scarica batteria e metriche derivate.
+- Aggiunta modalità **Compensa Power Control con rete/FV** per usare il prelievo reale dal contatore come riferimento del motore Power Control.
+- Aggiunti sensori di potenza di controllo, limite dinamico equivalente, soglia ritardata dinamica, riattivazione dinamica e margine disponibile.
+- Aggiornate le notifiche di preavviso per usare la potenza effettivamente controllata.
+- Aggiunto storico persistente degli interventi di distacco e riattivazione.
+- Migliorata la registrazione del frontend Lovelace e risolto il caricamento della card storico.
+- Aggiunta configurazione notifiche con selezione multipla dei dispositivi Home Assistant Companion.
+- Aggiunto supporto ai carichi `climate` nel motore Power Control.
+- Aggiunte modalità energia per carico: Normale, Flessibile, Solo surplus.
+- Aggiunte azioni energetiche configurabili: ON/OFF, Climate comfort, Aumento temperatura, Resistenza / carico ausiliario.
+- Aggiunti target temperatura e selezione entità ausiliaria contestuali.
+- Mantenuta separata la logica Power Control dalla futura attivazione automatica Energy Control sui carichi flessibili/surplus.
+
 ## 0.3.0
 - Prima release stabile della serie 0.3.x.
 - Gestione installatore avanzata direttamente dalla dashboard.
