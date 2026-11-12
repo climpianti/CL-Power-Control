@@ -1,0 +1,46 @@
+name: Publish CL Power Control v0.4.1-beta.1
+
+on:
+  push:
+    branches:
+      - "beta/0.4.1-beta.1-source-discovery"
+    paths:
+      - "custom_components/**"
+      - "tests/**"
+      - "README.md"
+      - "CHANGELOG.md"
+      - ".github/workflows/release-beta.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Compile and validate source
+        run: |
+          python -m compileall -q custom_components/cl_power_control
+          python -m unittest discover -s tests -p "test_*.py" -v
+          for f in custom_components/cl_power_control/{strings,manifest}.json custom_components/cl_power_control/translations/{it,en}.json; do
+            python -m json.tool "$f" >/dev/null
+          done
+      - name: Package integration
+        run: |
+          zip -q -r cl-power-control-0.4.1-beta.1.zip custom_components/cl_power_control -x '*/__pycache__/*' '*.pyc'
+          sha256sum cl-power-control-0.4.1-beta.1.zip > cl-power-control-0.4.1-beta.1.zip.sha256
+      - name: Create verified prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view v0.4.1-beta.1 >/dev/null 2>&1; then
+            gh release upload v0.4.1-beta.1 cl-power-control-0.4.1-beta.1.zip cl-power-control-0.4.1-beta.1.zip.sha256 --clobber
+            gh release edit v0.4.1-beta.1 --prerelease
+          else
+            gh release create v0.4.1-beta.1 cl-power-control-0.4.1-beta.1.zip cl-power-control-0.4.1-beta.1.zip.sha256 --target "$GITHUB_SHA" --prerelease --title "CL Power Control 0.4.1-beta.1 - SENEC/Solarman Discovery" --notes "Beta sperimentale: riconoscimento conservativo SENEC e Solarman in area installatore con approvazione esplicita, controllo unità W/kW e protezione da riferimenti circolari. Non aggiorna autonomamente le associazioni né attiva distacchi. La versione stabile 0.4.0 resta invariata."
+          fi
