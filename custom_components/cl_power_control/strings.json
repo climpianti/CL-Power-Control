@@ -115,7 +115,8 @@
           "installer_energy": "Energy Control",
           "installer_timing": "Tempi di intervento",
           "installer_pin_change": "Cambia PIN installatore",
-          "init": "Esci"
+          "init": "Esci",
+          "installer_detect_energy": "Rileva automaticamente SENEC / Solarman"
         }
       },
       "installer_power": {
@@ -167,12 +168,25 @@
           "new_pin": "Nuovo PIN",
           "confirm_pin": "Conferma PIN"
         }
+      },
+      "installer_detect_energy": {
+        "title": "Rileva sensori energetici",
+        "description": "Rilevamento: {detected}. Entità: {sources}. Note: {warnings}. Nessuna modifica senza conferma.",
+        "data": {
+          "source_id": "Inverter / impianto",
+          "replace_existing": "Sostituisci associazioni esistenti (ATTENZIONE)",
+          "apply_changes": "Conferma e salva i suggerimenti",
+          "return_to_installer": "Chiudi rilevamento"
+        }
       }
     },
     "error": {
       "invalid_pin": "PIN installatore non corretto.",
       "pin_format": "Il PIN deve contenere almeno 4 cifre.",
-      "pin_mismatch": "I PIN non coincidono."
+      "pin_mismatch": "I PIN non coincidono.",
+      "source_missing": "L'inverter selezionato non è più disponibile.",
+      "nothing_to_change": "Nessuna associazione sicura da modificare.",
+      "self_reference": "CL Power Control non può usare i propri sensori derivati come sorgenti."
     }
   }
 }

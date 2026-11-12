@@ -1,3 +1,11 @@
+## 0.4.1-beta.1 (pre-release)
+
+- Autodiscovery locale SENEC e Solarman dal registro delle entità di Home Assistant; suggerimenti installatore con conferma esplicita.
+- Controlli su unità, disponibilità, dispositivi distinti, sensori parziali e assenza di retroazioni verso i sensori CL Power Control.
+- Valorizzazione sicura e separata di Casa, Rete, Fotovoltaico, Batteria e SOC, senza abilitare distacchi o sovrascrivere associazioni valide.
+- Conversione letture di potenza da kW a W nel coordinatore, con esclusione di NaN e valori infiniti.
+- Aggiunti test automatici senza dipendenze Home Assistant per validare il ranking dei candidati.
+
 # Changelog
 
 ## 0.4.0

@@ -1,0 +1,30 @@
+name: CL Power Control - SENEC and Solarman source discovery
+
+on:
+  push:
+    branches:
+      - "beta/0.4.1-beta.1-source-discovery"
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  discover-tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Compile integration modules
+        run: python -m compileall -q custom_components/cl_power_control
+      - name: Validate localization files
+        run: |
+          python -m json.tool custom_components/cl_power_control/strings.json >/dev/null
+          python -m json.tool custom_components/cl_power_control/translations/it.json >/dev/null
+          python -m json.tool custom_components/cl_power_control/translations/en.json >/dev/null
+          python -m json.tool custom_components/cl_power_control/manifest.json >/dev/null
+      - name: SENEC / Solarman pure regression tests
+        run: python -m unittest discover -s tests -p "test_*.py" -v

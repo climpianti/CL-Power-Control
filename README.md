@@ -2,6 +2,16 @@
 
 Integrazione Home Assistant per la gestione intelligente e prioritaria dei carichi elettrici, con supporto a fotovoltaico, rete e batteria.
 
+## Beta 0.4.1-beta.1: riconoscimento SENEC / Solarman
+
+La beta aggiunge in **Impostazioni installatore → Rileva automaticamente SENEC / Solarman** una scansione locale del registro entità e dei sensori disponibili. Riconosce singolarmente sensori W/kW di casa, rete bidirezionale, FV, batteria e SOC; propone solo sensori con unità compatibili appartenenti alla stessa integrazione/dispositivo. **È necessario il PIN installatore e confermare il salvataggio.** Il riconoscimento non abilita da solo Energy Control o Power Control, non modifica soglie, distacchi o PIN. Le associazioni già valide sono mantenute, salvo l'esplicita scelta di sostituirle; quelle circolari verso CL Power Control vengono corrette solo con conferma dell'installatore.
+
+**SENEC:** rileva `senec_house_power`, `senec_grid_state_power`, `senec_solar_generated_power`, `senec_battery_state_power`, `senec_battery_charge_percent`. La direzione SENEC di rete nota è positiva quando si preleva; l'inversione viene disabilitata quando si associa questo sensore, ma la convenzione batteria deve essere verificata dall'installatore.
+
+**Solarman:** identifica i sensori disponibili attraverso la piattaforma dell'integrazione e le denominazioni normalizzate; esclude sensori per singola fase, MPPT, import-only ed export-only dalla rete bidirezionale. In assenza di un sensore di rete bidirezionale non lo inventa. Chiede di verificare il segno sul campo. Le unità kW vengono convertite in W in fase di lettura dal motore.
+
+**Sicurezza:** nessun sensore `sensor.cl_power_control_*` può essere selezionato come origine, prevenendo riferimenti circolari. Tutti i dati energetici sono letti senza modificare entità o impostazioni di Home Assistant.
+
 ## Versione stabile 0.4.0
 
 La 0.4.0 promuove a stabile il ramo sviluppato e validato fino alla `0.4.0-beta.5`.

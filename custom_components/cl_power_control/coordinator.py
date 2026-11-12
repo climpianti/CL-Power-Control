@@ -1,5 +1,8 @@
 """Load-management and energy engine for CL Power Control."""
+
 from __future__ import annotations
+
+import math
 
 import logging
 from datetime import datetime, timedelta
@@ -114,10 +117,18 @@ class CLPowerControlCoordinator(DataUpdateCoordinator[dict]):
         return self.entry.data.get(key, default)
 
     def _read_float(self, entity_id: str) -> float | None:
-        if not entity_id: return None
+        if not entity_id or str(entity_id).startswith("sensor.cl_power_control_"): return None
         state = self.hass.states.get(entity_id)
         if state is None or state.state in ("unknown", "unavailable", ""): return None
-        try: return float(state.state)
+        try:
+            value = float(state.state)
+            if not math.isfinite(value):
+                return None
+            unit = state.attributes.get("unit_of_measurement")
+            # Power Control always operates in watts; HA can expose kW.
+            if unit == "kW" and state.attributes.get("device_class") == "power":
+                return value * 1000.0
+            return value
         except (TypeError, ValueError): return None
 
     def _entity_domain(self, entity_id: str) -> str: return entity_id.split(".", 1)[0] if entity_id and "." in entity_id else ""
