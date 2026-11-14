@@ -1,3 +1,10 @@
+## 0.4.1-beta.2 (pre-release)
+
+- Diagnostica di sola lettura nell'area installatore: stato sensori, unità W/kW, disponibilità, riferimenti circolari e bilancio energetico indicativo con misuratore casa nativo dello stesso inverter.
+- Procedura guidata di associazione SENEC/Solarman in due passaggi: selezione sorgente e anteprima delle modifiche con conferma esplicita.
+- Controllo riferimenti circolari esteso al sensore generale e SOC anche nelle impostazioni manuali.
+- Nessuna modifica automatica a soglie, carichi, compensazione o polarità esistenti.
+
 ## 0.4.1-beta.1 (pre-release)
 
 - Autodiscovery locale SENEC e Solarman dal registro delle entità di Home Assistant; suggerimenti installatore con conferma esplicita.
