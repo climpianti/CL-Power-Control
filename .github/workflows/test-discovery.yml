@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - "beta/0.4.1-beta.1-source-discovery"
+      - "beta/0.4.1-beta.2-installer-diagnostics"
   pull_request:
   workflow_dispatch:
 
