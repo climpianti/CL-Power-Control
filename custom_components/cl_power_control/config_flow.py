@@ -23,7 +23,8 @@ from homeassistant.helpers.selector import (
 )
 
 from .const import *
-from .discovery import discover_candidates, proposal_for, summary
+from .discovery import discover_candidates, is_internal_sensor, proposal_for, summary
+from .diagnostics import format_diagnostics, inspect_sources
 from .model import new_load, sort_loads
 from .security import create_pin_hash, verify_pin
 
@@ -131,9 +132,11 @@ class CLPowerControlOptionsFlow(config_entries.OptionsFlow):
         self._installer_unlocked = False
         self._pending_load: dict | None = None
         self._pending_edit = False
+        self._pending_source_id: str | None = None
+        self._pending_replace_existing = False
 
-    def _discover_installed_sources(self):
-        """Read the entity registry and current states: no network scan or write."""
+    def _energy_entity_rows(self):
+        """Read registry and states; never change devices or options."""
         registry = er.async_get(self.hass)
         rows = []
         for ent in registry.entities.values():
@@ -154,7 +157,10 @@ class CLPowerControlOptionsFlow(config_entries.OptionsFlow):
                 "enabled": ent.disabled_by is None,
                 "state": state.state if state is not None else None,
             })
-        return discover_candidates(rows)
+        return rows
+
+    def _discover_installed_sources(self):
+        return discover_candidates(self._energy_entity_rows())
 
     def _shared_installer_unlocked(self):
         coordinator = self.hass.data.get(DOMAIN, {}).get(self.config_entry.entry_id)
@@ -167,7 +173,12 @@ class CLPowerControlOptionsFlow(config_entries.OptionsFlow):
     async def async_step_init(self, user_input=None): return self.async_show_menu(step_id="init", menu_options=["quick", "notifications", "loads", "installer_unlock", "installer_pin_reset"])
 
     async def async_step_quick(self, user_input=None):
-        if user_input is not None: self._data.update(user_input); return await self._save()
+        if user_input is not None:
+            if is_internal_sensor(user_input.get(CONF_POWER_SENSOR)):
+                return self.async_show_form(step_id="quick", data_schema=_power_schema(self._data),
+                                            errors={"base": "self_reference"})
+            self._data.update(user_input)
+            return await self._save()
         return self.async_show_form(step_id="quick", data_schema=_power_schema(self._data))
 
     async def async_step_notifications(self, user_input=None):
@@ -284,20 +295,25 @@ class CLPowerControlOptionsFlow(config_entries.OptionsFlow):
 
     async def async_step_installer(self, user_input=None):
         if not self._shared_installer_unlocked(): return await self.async_step_installer_unlock()
-        return self.async_show_menu(step_id="installer", menu_options=["loads", "installer_power", "installer_detect_energy", "installer_energy", "installer_timing", "installer_pin_change", "init"])
+        return self.async_show_menu(step_id="installer", menu_options=["loads", "installer_power", "installer_detect_energy", "installer_diagnostics", "installer_energy", "installer_timing", "installer_pin_change", "init"])
 
     async def async_step_installer_power(self, user_input=None):
         if not self._shared_installer_unlocked(): return await self.async_step_installer_unlock()
-        if user_input is not None: self._data.update(user_input); return await self._save()
+        if user_input is not None:
+            if is_internal_sensor(user_input.get(CONF_POWER_SENSOR)):
+                return self.async_show_form(step_id="installer_power", data_schema=_power_schema(self._data),
+                                            errors={"base": "self_reference"})
+            self._data.update(user_input)
+            return await self._save()
         return self.async_show_form(step_id="installer_power", data_schema=_power_schema(self._data))
 
     async def async_step_installer_energy(self, user_input=None):
         if not self._shared_installer_unlocked(): return await self.async_step_installer_unlock()
         if user_input is not None:
             # A CL Power Control output cannot feed its own inputs.
-            for key in (CONF_POWER_SENSOR, CONF_GRID_POWER_SENSOR, CONF_PV_POWER_SENSOR,
-                        CONF_BATTERY_POWER_SENSOR):
-                if str(user_input.get(key, "")).startswith("sensor.cl_power_control_"):
+            for key in (CONF_GRID_POWER_SENSOR, CONF_PV_POWER_SENSOR,
+                        CONF_BATTERY_POWER_SENSOR, CONF_BATTERY_SOC_SENSOR):
+                if is_internal_sensor(user_input.get(key)):
                     return self.async_show_form(
                         step_id="installer_energy", data_schema=_energy_schema(self._data),
                         errors={"base": "self_reference"},
@@ -315,49 +331,82 @@ class CLPowerControlOptionsFlow(config_entries.OptionsFlow):
         )
 
     async def async_step_installer_detect_energy(self, user_input=None):
-        """Discover SENEC / Solarman, then require an explicit installer decision."""
+        """Select a source; the next step previews changes before saving."""
         if not self._shared_installer_unlocked(): return await self.async_step_installer_unlock()
         groups = self._discover_installed_sources()
         if not groups:
+            if user_input is not None: return await self.async_step_installer()
             return self.async_show_form(
                 step_id="installer_detect_energy",
                 data_schema=vol.Schema({vol.Optional("return_to_installer", default=True): BooleanSelector()}),
-                description_placeholders={"detected": "Nessuna sorgente SENEC/Solarman con sensori validi trovata.",
-                                          "sources": "Installa l'integrazione e verifica che i sensori siano disponibili.",
-                                          "warnings": "Nessuna configurazione modificata."},
+                description_placeholders={"detected": "Nessuna sorgente SENEC/Solarman disponibile",
+                    "sources": "Controllare integrazioni e sensori attivi.",
+                    "warnings": "Nessuna modifica effettuata."},
             )
         by_id = {g["id"]: g for g in groups}
         errors = {}
         if user_input is not None:
             selected = by_id.get(user_input.get("source_id"))
-            if selected is None:
-                errors["base"] = "source_missing"
-            elif user_input.get("apply_changes"):
-                changes = proposal_for(self._data, selected,
-                                       replace_existing=bool(user_input.get("replace_existing")))
-                if changes:
-                    self._data.update(changes)
-                    return await self._save()
+            if selected:
+                self._pending_source_id = selected["id"]
+                self._pending_replace_existing = bool(user_input.get("replace_existing", False))
+                return await self.async_step_installer_detect_review()
+            errors["base"] = "source_missing"
+        choices = [{"value": g["id"], "label": f"{g['provider'].upper()} - {g['matched']} sensori - {g['id'].split(':', 1)[1][:12]}"}
+                   for g in groups]
+        return self.async_show_form(
+            step_id="installer_detect_energy",
+            data_schema=vol.Schema({
+                vol.Required("source_id", default=groups[0]["id"]): SelectSelector(
+                    SelectSelectorConfig(options=choices, mode=SelectSelectorMode.DROPDOWN)),
+                vol.Required("replace_existing", default=False): BooleanSelector(),
+            }), errors=errors,
+            description_placeholders={"detected": f"{len(groups)} sorgenti",
+                "sources": "Seleziona l'inverter e controlla l'anteprima prima di salvare.",
+                "warnings": "Le associazioni esistenti vengono conservate per impostazione predefinita."},
+        )
+
+    async def async_step_installer_detect_review(self, user_input=None):
+        """Preview a patch and require explicit approval."""
+        if not self._shared_installer_unlocked(): return await self.async_step_installer_unlock()
+        selected = next((g for g in self._discover_installed_sources()
+                         if g["id"] == self._pending_source_id), None)
+        if selected is None:
+            self._pending_source_id = None
+            return await self.async_step_installer_detect_energy()
+        changes = proposal_for(self._data, selected, replace_existing=self._pending_replace_existing)
+        errors = {}
+        if user_input is not None:
+            if not user_input.get("confirm_changes"):
+                errors["base"] = "confirmation_required"
+            elif not changes:
                 errors["base"] = "nothing_to_change"
             else:
-                return await self.async_step_installer()
-        picked = by_id.get(user_input.get("source_id")) if user_input else groups[0]
-        choices = [{"value": group["id"],
-                    "label": f"{group['provider'].upper()} - {group['matched']} sensori"}
-                   for group in groups]
-        schema = vol.Schema({
-            vol.Required("source_id", default=picked["id"]): SelectSelector(
-                SelectSelectorConfig(options=choices, mode=SelectSelectorMode.DROPDOWN)),
-            vol.Required("replace_existing", default=False): BooleanSelector(),
-            vol.Required("apply_changes", default=False): BooleanSelector(),
-        })
+                self._data.update(changes)
+                self._pending_source_id = None
+                self._pending_replace_existing = False
+                return await self._save()
+        preview = " ; ".join(f"{key}: {self._data.get(key, 'non configurato')} -> {value}"
+                             for key, value in changes.items()) or "Nessuna modifica proposta"
         return self.async_show_form(
-            step_id="installer_detect_energy", data_schema=schema, errors=errors,
-            description_placeholders={
-                "detected": f"{len(groups)} inverter; sorgente proposta: {picked['provider'].upper()}",
-                "sources": summary(picked),
-                "warnings": " ".join(picked["warnings"]) or "Nessuna anomalia rilevata.",
-            },
+            step_id="installer_detect_review",
+            data_schema=vol.Schema({vol.Required("confirm_changes", default=False): BooleanSelector()}),
+            errors=errors,
+            description_placeholders={"detected": selected["provider"].upper(),
+                "sources": summary(selected), "changes": preview,
+                "warnings": " ; ".join(selected["warnings"]) or "Nessuna anomalia rilevata."},
+        )
+
+    async def async_step_installer_diagnostics(self, user_input=None):
+        """Read-only checks of source availability, units and energy balance."""
+        if not self._shared_installer_unlocked(): return await self.async_step_installer_unlock()
+        if user_input is not None: return await self.async_step_installer()
+        rows = self._energy_entity_rows()
+        diagnostics = inspect_sources(rows, self._data, discover_candidates(rows))
+        return self.async_show_form(
+            step_id="installer_diagnostics",
+            data_schema=vol.Schema({vol.Optional("return_to_installer", default=True): BooleanSelector()}),
+            description_placeholders=format_diagnostics(diagnostics),
         )
 
     async def async_step_installer_timing(self, user_input=None):

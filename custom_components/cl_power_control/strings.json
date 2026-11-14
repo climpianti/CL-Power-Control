@@ -116,7 +116,8 @@
           "installer_timing": "Tempi di intervento",
           "installer_pin_change": "Cambia PIN installatore",
           "init": "Esci",
-          "installer_detect_energy": "Rileva automaticamente SENEC / Solarman"
+          "installer_detect_energy": "Rileva automaticamente SENEC / Solarman",
+          "installer_diagnostics": "Diagnostica sorgenti energetiche"
         }
       },
       "installer_power": {
@@ -178,6 +179,20 @@
           "apply_changes": "Conferma e salva i suggerimenti",
           "return_to_installer": "Chiudi rilevamento"
         }
+      },
+      "installer_detect_review": {
+        "title": "Anteprima associazioni energetiche",
+        "description": "Integrazione: {detected}. Sensori disponibili: {sources}. Modifiche proposte: {changes}. Note: {warnings}. Nessuna modifica finché non confermi.",
+        "data": {
+          "confirm_changes": "Ho verificato e confermo queste modifiche"
+        }
+      },
+      "installer_diagnostics": {
+        "title": "Diagnostica energetica (sola lettura)",
+        "description": "Stato: {health}. Sensori: {sources}. Bilancio energetico: {balance}. Avvisi: {warnings}. Nessuna modifica verrà salvata.",
+        "data": {
+          "return_to_installer": "Torna alle impostazioni installatore"
+        }
       }
     },
     "error": {
@@ -186,7 +201,8 @@
       "pin_mismatch": "I PIN non coincidono.",
       "source_missing": "L'inverter selezionato non è più disponibile.",
       "nothing_to_change": "Nessuna associazione sicura da modificare.",
-      "self_reference": "CL Power Control non può usare i propri sensori derivati come sorgenti."
+      "self_reference": "CL Power Control non può usare i propri sensori derivati come sorgenti.",
+      "confirmation_required": "Conferma esplicitamente le modifiche proposte prima del salvataggio."
     }
   }
 }

@@ -116,7 +116,8 @@
           "installer_timing": "Timing",
           "installer_pin_change": "Change installer PIN",
           "init": "Exit",
-          "installer_detect_energy": "Detect SENEC / Solarman automatically"
+          "installer_detect_energy": "Detect SENEC / Solarman automatically",
+          "installer_diagnostics": "Energy source diagnostics"
         }
       },
       "installer_power": {
@@ -177,6 +178,20 @@
           "apply_changes": "Confirm and save suggestions",
           "return_to_installer": "Close discovery"
         }
+      },
+      "installer_detect_review": {
+        "title": "Review source associations",
+        "description": "Provider: {detected}. Available sources: {sources}. Proposed changes: {changes}. Notes: {warnings}. Nothing changes until confirmed.",
+        "data": {
+          "confirm_changes": "I have reviewed and approve these changes"
+        }
+      },
+      "installer_diagnostics": {
+        "title": "Energy diagnostics (read-only)",
+        "description": "Status: {health}. Sensors: {sources}. Energy balance: {balance}. Warnings: {warnings}. No changes will be saved.",
+        "data": {
+          "return_to_installer": "Return to installer settings"
+        }
       }
     },
     "error": {
@@ -185,7 +200,8 @@
       "pin_mismatch": "The PINs do not match.",
       "source_missing": "Selected inverter is not available anymore.",
       "nothing_to_change": "No safe association to change.",
-      "self_reference": "CL Power Control cannot read its own derived sensors."
+      "self_reference": "CL Power Control cannot read its own derived sensors.",
+      "confirmation_required": "Confirm the proposed changes before saving."
     }
   }
 }
